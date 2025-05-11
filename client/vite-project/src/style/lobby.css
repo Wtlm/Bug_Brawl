@@ -1,0 +1,29 @@
+.dot span {
+  display: inline-block;
+  animation: wave 1.2s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Stagger the delay for each dot */
+.dot span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.dot span:nth-child(2) {
+  animation-delay: 0.25s;
+}
+
+.dot span:nth-child(3) {
+  animation-delay: 0.5s;
+}
