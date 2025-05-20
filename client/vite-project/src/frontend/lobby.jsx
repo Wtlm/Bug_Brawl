@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from "react-router-dom";
 import { delay, motion } from "framer-motion";
-import "../style/lobby.css";
 import Popup from "../widget/popup";
 
 import Sabotage from '../widget/sabotage.jsx';
@@ -9,11 +9,18 @@ export default function Lobby() {
   const buttonLabels = ["Create Match", "Join Match", "Find Match"];
   const [selectedLabel, setSelectedLabel] = useState('');
   const [showPopup, setShowPopup] = useState(false);
-
+  const navigate = useNavigate();
 
   const handleButtonClick = (label) => {
     setSelectedLabel(label);
     setShowPopup(true);
+
+    if (label === "Find Match") {
+      setTimeout(() => {
+        setShowPopup(false);
+        navigate("/game");
+      }, 2000);
+    }
   };
 
   const handleClosePopup = () => {
@@ -56,18 +63,12 @@ export default function Lobby() {
   };
 
   return (
-    //<div className={showGlitch ? "font-glitch" : ""}></div>
-    //<div className={isBackwards ? "backwards-text" : ""}></div>
-    <div
-      className="drift-effect"
-      style={{
-        transform: `translate(${drift.x}px, ${drift.y}px)`
-      }}>
+    <div className="h-full w-full flex flex-col gap-3 justify-center items-center">
       <motion.h1
         layoutId="name"
-        className="top-[10%]"
+        className="lg:text-9xl text-8xl"
         initial={{ scale: 1 }}
-        animate={{ scale: 0.7 }}
+        animate={{ scale: 0.8 }}
         transition={{ type: "spring", duration: 1 }}
       >
         BUG BRAWL
@@ -76,9 +77,9 @@ export default function Lobby() {
       <motion.input
         type="text"
         placeholder="Enter your name"
-        className="absolute top-[48%] left-1/2 px-4 py-2 rounded-full bg-[#9f9f9f] decoration-[#3a3a3a] font-bold text-xl text-center"
+        className=" mb-6 px-4 py-2 rounded-full bg-[#9f9f9f] decoration-[#3a3a3a] font-bold text-2xl text-center"
         initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%", }}
+        animate={{ opacity: 1, scale: 1, }}
         transition={{
           type: "spring",
           stiffness: 200,
@@ -86,11 +87,11 @@ export default function Lobby() {
         }}
       />
 
-      <div className="absolute flex gap-6 justify-evenly top-[62%] left-1/2 transform -translate-1/2">
+      <div className="flex gap-6 justify-evenly">
         {buttonLabels.map((label) => (
           <motion.button
             key={label}
-            className="text-lg"
+            className="w-max lg:text-lg text-sm"
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{
@@ -105,50 +106,7 @@ export default function Lobby() {
           </motion.button>
         ))}
       </div>
-
-      <div className="flex flex-col justify-between text-center items-center">
-        <div className="absolute top-[75%] left-[30%] transform -translate-x-1/2">
-          <motion.button
-            className="!text-black w-full !px-4 !py-2 !text-base !bottom-1"
-            onClick={handleFlickerClick}>
-            Test Effect Flicker
-          </motion.button>
-        </div>
-        <div className="absolute top-[75%] left-[45%] transform -translate-x-1/2">
-          <motion.button
-            className="!text-black w-full !px-4 !py-2 !text-base !bottom-1"
-            onClick={handleBlurryClick}>
-            Test Effect Blurry
-          </motion.button>
-        </div>
-        <div className="absolute top-[75%] left-[60%] transform -translate-x-1/2">
-          <motion.button
-            className="!text-black w-full !px-4 !py-2 !text-base !bottom-1"
-            onClick={handleGlitchClick}>
-            Test Font Glitch
-          </motion.button>
-        </div>
-        <div className="absolute top-[75%] left-[75%] transform -translate-x-1/2">
-          <motion.button
-            className="!text-black w-full !px-4 !py-2 !text-base !bottom-1"
-            onClick={handleBackwardsClick}>
-            Test Backwards Text
-          </motion.button>
-        </div>
-        <div className="absolute top-[75%] left-[90%] transform -translate-x-1/2">
-          <motion.button
-            className="!text-black w-full !px-4 !py-2 !text-base"
-            onClick={handleMouseDriftClick}>
-            Test Mouse Drift
-          </motion.button>
-        </div>
-      </div>
-
-      {/* Broken Screen Effect */}
-      <Sabotage isVisible={showFlicker} effectType={'screen-flicker-overlay'} />
-      <Sabotage isVisible={showBlurry} effectType={'backdrop-blur-[2px]'} />
-
-      <Popup show={showPopup} onClose={handleClosePopup}>
+      <Popup show={showPopup} onClose={handleClosePopup} className="lg:w-1/4 lg:h-2/5">
         {selectedLabel === "Create Match" && (
           <div className="flex flex-col justify-between text-center items-center">
             <p>Enter Code</p>
@@ -157,7 +115,10 @@ export default function Lobby() {
               className="bg-[#9f9f9f] rounded-lg m-3 px-4 py-1 w-2/3 text-black text-center !text-base"
             /><br />
             <motion.button
-              className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1">
+              className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1"
+              whileHover={{scale: 0.9}}
+
+            >
               Create
             </motion.button>
           </div>
@@ -170,7 +131,9 @@ export default function Lobby() {
               className="bg-[#9f9f9f] rounded-lg m-3 px-4 py-1 w-2/3 text-black text-center !text-base"
             /><br />
             <motion.button
-              className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1">
+              className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1"
+              whileHover={{scale:0.9}}
+            >
               Join
             </motion.button>
           </div>
@@ -178,10 +141,22 @@ export default function Lobby() {
         {selectedLabel === "Find Match" && (
           <>
             <p>Finding Match</p>
-            <p className="dot">
-              <span>.&nbsp;</span>
-              <span>.&nbsp;</span>
-              <span>.</span>
+            <p className="inline-block">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{
+                    duration: 1.2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.25,
+                  }}
+                  className="inline-block"
+                >
+                  .&nbsp;
+                </motion.span>
+              ))}
             </p>
           </>
         )}

@@ -31,17 +31,15 @@ body {
   overflow: hidden;
   height: 100vh;
   width: 100vw;
-}
+} 
 
 h1 {
-  font-size: 8em;
+  /* font-size: 8em; */
   line-height: 1;
-  width: inherit;
+  width: max-content;
   font-family: 'Rubik Glitch', cursive;
-  position: absolute;
+  position: relative;
   color: white;
-  margin-top: 0.5em; 
-  margin-bottom: 0.5em; 
   text-align: center;
 }
 
@@ -52,25 +50,39 @@ button {
   font-weight: bold;
   background-color: #ffffff;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  /* transition: transform 0.2s ease; */
 }
-button:hover {
+/* button:hover {
   transform: scale(0.9);
-}
+} */
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+
+@keyframes glitch {
+  0% {
+    text-shadow: 2px 0 red, -2px 0 cyan;
   }
-  a:hover {
-    color: #747bff;
+  20% {
+    text-shadow: -2px 0 red, 2px 0 cyan;
   }
-  button {
-    background-color: #d1d1d1;
+  40% {
+    text-shadow: 2px 2px red, -2px -2px cyan;
   }
+  60% {
+    text-shadow: -2px -2px red, 2px 2px cyan;
+  }
+  80% {
+    text-shadow: 2px -2px red, -2px 2px cyan;
+  }
+  100% {
+    text-shadow: 0 0 red, 0 0 cyan;
+  }
+}
+
+.glitch{
+  animation: glitch 1s infinite;
 }
