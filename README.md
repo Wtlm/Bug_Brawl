@@ -9,7 +9,7 @@
 - Real-time multiplayer gameplay (up to 4 players)
 - Fun sabotage mechanics triggered by correct answers
 - Health-based elimination system
-- Unique UI and animations for each player
+- Display UI and animations for each player
 - Smooth synchronization of game state using sockets
 
 ---
@@ -22,8 +22,8 @@ Players answer trivia questions as quickly as possible. Each correct answer allo
 
 ## ⚙️ Technologies Used
 
-- **Frontend:** HTML, CSS, JavaScript, Canvas API  
-- **Backend:** Node.js, Express.js, Socket.io  
+- **Frontend:** React, Vite, JavaScript, Tailwind Css 
+- **Backend:** Node.js, Socket.io  
 - **Game Loop & UI:** Custom game logic using JavaScript
 
 ---
