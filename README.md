@@ -16,7 +16,7 @@
 
 ## 🧠 Game Concept
 
-Players answer trivia questions as quickly as possible. Each correct answer allows a player to perform a sabotage move against an opponent (e.g., steal points, delay input, reduce health). The goal is to be the last player remaining.
+Players answer trivia questions as quickly as possible. Each correct answer allows a player to perform a sabotage move against an opponent (e.g., screen glitch, delay mouse, bug swarm). The goal is to be the last player remaining.
 
 ---
 
