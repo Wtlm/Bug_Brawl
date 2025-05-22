@@ -9,9 +9,16 @@ export default defineConfig({
     outDir: 'dist',
   },
   server: {
-    port: 8080,
+    host: true,
+    port: 5173,
     open: true,
-    historyApiFallback: true, 
+    historyApiFallback: true,
+    proxy: {
+      '/ws': {
+        target: 'ws://localhost:8080',
+        ws: true,
+      },
+    },
   },
   plugins: [
     react(),
