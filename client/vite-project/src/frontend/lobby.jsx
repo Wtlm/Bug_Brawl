@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { delay, motion } from "framer-motion";
+import { getSocket } from "../socket/socket.js";
 import Popup from "../widget/popup";
 
 export default function Lobby() {
@@ -14,8 +15,43 @@ export default function Lobby() {
   const [showWaitingForHost, setShowWaitingForHost] = useState(false);
   const [playerCount, setPlayerCount] = useState(1);
   const [isHost, setIsHost] = useState(false);
+  const [status, setStatus] = useState("");
+  const [isFindingMatch, setIsFindingMatch] = useState(false);
+  const [countdown, setCountdown] = useState(null);
   const socketRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Create WebSocket once on component mount
+    if (!socketRef.current) {
+      getOrCreateSocket();
+    }
+    // Clean up WebSocket connection on component unmount
+    return () => {
+    };
+  }, []);
+
+  const sendPayload = (payload) => {
+    if (!socketRef.current) {
+      getOrCreateSocket();
+    }
+
+    if (!socketRef.current) {
+      alert("WebSocket is not connected.");
+      return;
+    }
+
+    if (socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(payload));
+    } else if (socketRef.current.readyState === WebSocket.CONNECTING) {
+      // Send when socket opens
+      socketRef.current.onopen = () => {
+        socketRef.current.send(JSON.stringify(payload));
+      };
+    } else {
+      alert("WebSocket connection is not ready. Please refresh the page.");
+    }
+  };
 
   const handleButtonClick = (label) => {
     if (!playerName.trim()) {
@@ -26,114 +62,36 @@ export default function Lobby() {
     setSelectedLabel(label);
     setShowPopup(true);
 
+    // Reset UI states
+    setStatus("");
+    setRoomCode("");
+    setPlayerCount(1);
+    setIsHost(false);
+    setCountdown(null);
+    setShowWaitingForHost(false);
+    setShowJoinCodeInput(false);
+    setIsFindingMatch(false);
+
     if (label === "Join Match") {
       setShowJoinCodeInput(true);
       return;
     }
 
-    // Connect to WebSocket for Create Match and Find Match
-    connectWebSocket(label);
-  };
-
-  const connectWebSocket = (action) => {
-    console.log(`Connecting WebSocket for action: ${action}`);
-    
-    // Check if WebSocket is supported
-    if (!window.WebSocket) {
-      console.error("WebSocket is not supported by this browser");
-      alert("WebSocket is not supported by this browser");
-      return;
+    if (label === "Find Match") {
+      setIsFindingMatch(true);
     }
 
-    try {
-      socketRef.current = new WebSocket(`${location.origin.replace(/^http/, "ws")}/ws`);
-      console.log("WebSocket object created, readyState:", socketRef.current.readyState);
-    } catch (error) {
-      console.error("Error creating WebSocket:", error);
-      alert("Failed to create WebSocket connection");
-      return;
+    // Prepare payload depending on label
+    let payload;
+    if (label === "Create Match") {
+      payload = { action: "create", name: playerName.trim() };
+    } else if (label === "Find Match") {
+      payload = { action: "find_match", name: playerName.trim() };
     }
 
-    socketRef.current.onopen = () => {
-      console.log("WebSocket connected successfully, readyState:", socketRef.current.readyState);
-      const payload = {
-        action: action === "Create Match" ? "create" : "join",
-        name: playerName.trim(),
-        room: action === "Join Match" ? joinRoomCode.trim() : undefined,
-      };
-      console.log("Sending payload:", payload);
-      try {
-        socketRef.current.send(JSON.stringify(payload));
-        console.log("Payload sent successfully");
-      } catch (error) {
-        console.error("Error sending payload:", error);
-      }
-    };
-
-    socketRef.current.onmessage = (event) => {
-      console.log("Received message:", event.data);
-      try {
-        const data = JSON.parse(event.data);
-        console.log("Parsed data:", data);
-
-        if (data.error) {
-          console.error("Server error:", data.error);
-          alert(data.error);
-          socketRef.current.close();
-          setShowPopup(false);
-          return;
-        }
-
-        if (data.type === "room_created") {
-          console.log("Room created:", data.roomCode);
-          setIsHost(true);
-          setRoomCode(data.roomCode);
-          setPlayerCount(1);
-        }
-
-        if (data.type === "joined") {
-          console.log("Joined room successfully");
-          setIsHost(false);
-          setShowJoinCodeInput(false);
-          setShowWaitingForHost(true);
-        }
-
-        if (data.type === "waiting") {
-          console.log("Player count updated:", data.playerCount);
-          setPlayerCount(data.playerCount);
-        }
-
-        if (data.type === "start") {
-          console.log("Game starting");
-          navigate("/game");
-        }
-      } catch (error) {
-        console.error("Error parsing message:", error);
-      }
-    };
-
-    socketRef.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      console.log("WebSocket readyState on error:", socketRef.current.readyState);
-      alert("Connection error. Please try again.");
-      setShowPopup(false);
-    };
-
-    socketRef.current.onclose = (event) => {
-      console.log("WebSocket connection closed:", event.code, event.reason);
-      console.log("Was clean:", event.wasClean);
-      if (!event.wasClean) {
-        console.error("WebSocket closed unexpectedly");
-      }
-    };
-
-    // Add a timeout to check connection status
-    setTimeout(() => {
-      if (socketRef.current.readyState === WebSocket.CONNECTING) {
-        console.error("WebSocket still connecting after 5 seconds");
-        alert("Connection timeout. Please check if the server is running.");
-      }
-    }, 5000);
+    if (payload) {
+      sendPayload(payload);
+    }
   };
 
   const handleJoinRoom = () => {
@@ -143,7 +101,9 @@ export default function Lobby() {
     }
 
     setShowJoinCodeInput(false);
-    connectWebSocket("Join Match");
+
+    // Send join payload via existing socket connection
+    sendPayload({ action: "join", name: playerName.trim(), room: joinRoomCode.trim() });
   };
 
   const handleStartGame = () => {
@@ -161,10 +121,121 @@ export default function Lobby() {
     setRoomCode('');
     setPlayerCount(1);
     setIsHost(false);
-    
-    if (socketRef.current) {
-      socketRef.current.close();
+    setStatus("");
+    setIsFindingMatch(false);
+    setCountdown(null);
+
+    if (roomCode && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: "leave_room" }));
     }
+  };
+
+  const handleCancelFindMatch = () => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      // Instead of closing, send cancel action
+      socketRef.current.send(JSON.stringify({ action: "cancel_find_match" }));
+    }
+
+    setIsFindingMatch(false);
+    setSelectedLabel('');
+    setShowPopup(false);
+    setStatus("");
+    setCountdown(null);
+    setRoomCode("");
+    setIsHost(false);
+    setPlayerCount(1);
+  };
+
+  const startCountdown = (seconds) => {
+    setCountdown(seconds);
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === 1) {
+          clearInterval(interval);
+          navigate("/game");
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const getOrCreateSocket = () => {
+    socketRef.current = getSocket();
+
+    socketRef.current.onopen = () => {
+      console.log("WebSocket connected");
+    };
+
+    socketRef.current.onmessage = (event) => {
+      console.log("Received message:", event.data);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.error) {
+          alert(data.error);
+          if (socketRef.current) socketRef.current.close();
+          setShowPopup(false);
+          return;
+        }
+
+        switch (data.type) {
+          case "room_created":
+            setIsHost(true);
+            setRoomCode(data.roomCode);
+            setPlayerCount(1);
+            break;
+          case "joined":
+            setIsHost(false);
+            setShowJoinCodeInput(false);
+            setShowWaitingForHost(true);
+            break;
+          case "searching":
+            setStatus("Finding Match");
+            break;
+          case "match_found":
+            setRoomCode(data.roomCode);
+            setIsHost(data.isHost);
+            setPlayerCount(data.playerCount || 2);
+            setStatus("Match found! Game will start soon...");
+            setIsFindingMatch(false);
+            startCountdown(5);
+            break;
+          case "waiting":
+            setPlayerCount(data.playerCount);
+            break;
+          case "room_destroyed":
+            alert(data.message || "The room has been closed by the host.");
+            handleClosePopup();
+            break;
+          case "left_room":
+            setRoomCode('');
+            setPlayerCount(1);
+            setIsHost(false);
+            setStatus('');
+            break;
+          case "start":
+            navigate("/game", { state: { players: data.players } });
+            break;
+          default:
+            console.warn("Unknown message type:", data.type);
+            break;
+        }
+      } catch (error) {
+        console.error("Error parsing message:", error);
+      }
+    };
+
+    socketRef.current.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      alert("Connection error. Please try again.");
+      setShowPopup(false);
+    };
+
+    socketRef.current.onclose = (event) => {
+      console.log("WebSocket closed:", event.code, event.reason);
+      socketRef.current = null;
+    };
+
   };
 
   return (
@@ -245,7 +316,7 @@ export default function Lobby() {
                 type="text"
                 value={joinRoomCode}
                 onChange={(e) => setJoinRoomCode(e.target.value.toUpperCase())}
-                className="bg-[#9f9f9f] rounded-lg m-3 px-4 py-1 w-2/3 text-black text-center !text-base"                placeholder="Room Code"
+                className="bg-[#9f9f9f] rounded-lg m-3 px-4 py-1 w-2/3 text-black text-center !text-base" placeholder="Room Code"
                 maxLength={4}
               />
             </div>
@@ -268,23 +339,52 @@ export default function Lobby() {
 
         {selectedLabel === "Find Match" && (
           <div className="flex flex-col justify-center text-center items-center h-full">
-            <p className="text-lg mb-4">Finding Match</p>
-            <p className="inline-block">
-              {[0, 1, 2].map((i) => (
-                <motion.span
-                  key={i}
-                  animate={{ y: [0, -5, 0] }}
-                  transition={{
-                    duration: 1.2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.25,
-                  }}
-                  className="inline-block"
-                >
-                  .&nbsp;
-                </motion.span>
-              ))}
+            <p className="text-lg mb-4">
+              {countdown !== null ? `Starting in ${countdown}...` : "Finding Match"}
+            </p>
+
+            {!isFindingMatch && countdown !== null ? (
+              // Show match found state
+              <div className="mb-4">
+                <p className="text-lg">Room Code: <strong>{roomCode}</strong></p>
+                <p className="text-lg">Players: {playerCount}/4</p>
+              </div>
+            ) : isFindingMatch ? (
+              // Show loading animation while searching
+              <p className="inline-block mb-4">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: i * 0.25,
+                    }}
+                    className="inline-block"
+                  >
+                    .&nbsp;
+                  </motion.span>
+                ))}
+              </p>
+            ) : null}
+
+            {countdown === null && (
+              <button
+                onClick={handleCancelFindMatch}
+                className="px-4 py-2 bg-red-500 text-black rounded hover:bg-red-600 transition"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
+
+        {countdown !== null && (
+          <div className="text-center mt-4">
+            <p className="text-xl font-bold text-green-500">
+              Starting in {countdown}...
             </p>
           </div>
         )}

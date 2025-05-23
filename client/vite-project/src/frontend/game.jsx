@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import PlayCard from "./playcard";
 import Popup from "../widget/popup";
 import Questions from "../assets/quiz.json"
+import { useLocation } from "react-router-dom";
+import { getSocket } from "../socket/socket.js";
 
 
 export default function Game() {
@@ -11,6 +13,47 @@ export default function Game() {
     const [scrambledQuestion, setScrambledQuestion] = useState('');
     const [scrambledOptions, setScrambledOptions] = useState([]);
 
+    const location = useLocation();
+    const [players, setPlayers] = useState(location.state?.players || []);
+    const [roomId, setRoomId] = useState(location.state?.roomId || null);
+
+    useEffect(() => {
+        const socket = getSocket();
+
+        socket.onopen = () => {
+        console.log("Game socket open. Joining room:", roomId);
+        if (roomId) {
+            socket.send(JSON.stringify({ type: "join_game", roomId }));
+        }
+        };
+
+        socket.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            console.log("Game socket message:", msg);
+
+            switch (msg.type) {
+                case "player_list":
+                setPlayers(msg.players);
+                break;
+
+                case "new_question":
+                setQuestion(msg.question);
+                setShowPopup(true);
+                break;
+
+                case "update_health":
+                setPlayers(msg.players);
+                break;
+
+                default:
+                break;
+            }
+        };
+        return () => {
+            // Close socket only if you want to leave the game
+            // socket.close();
+        };
+    }, [roomId]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -21,7 +64,7 @@ export default function Game() {
         }, 2000);
         // Cleanup if component unmounts before timeout
         return () => clearTimeout(timer);
-    }, []);
+    }, [roomId]);
 
     useEffect(() => {
         if (!showPopup || !question) return;
@@ -55,31 +98,58 @@ export default function Game() {
     };
 
     return (
+
+        // <div className="h-screen bg-black grid grid-cols-2 grid-rows-2 justify-center items-center gap-3 p-3">
+        //     {/* <PlayCard name="Chanh" health={5} borderColor="blue" />
+        //     <PlayCard name="HaDo" health={2} borderColor="red" />
+        //     <PlayCard name="Sieu Nhan Long Long" health={3} borderColor="green" />
+        //     <PlayCard name="Sieu Nhan Long Long" health={4} borderColor="yellow" /> */}
+
+        //     {players.map((player, idx) => (
+        //         <PlayCard
+        //         key={player.id || idx}
+        //         name={player.name}
+        //         health={player.health || 5} // default to 5 if not sent
+        //         borderColor={["blue", "red", "green", "yellow"][idx % 4]}
+        //         />
+        //     ))}
+
+
+        //     <Popup className="w-3/5 h-5/6" show={showPopup} onClose={handleClosePopup} sabotageName="CodeRain">
+        //         {question && (
+        //             <div className={` p-6 text-left  ${isScrambled ? 'text-green-500' : 'text-white'}`}>
+        //                 <h2 className="lg:text-2xl text-sm font-bold mb-5 "> {isScrambled ? scrambledQuestion : question.question}</h2>
+        //                 <ul className=" grid grid-cols-2 grid-rows-2 gap-5">
+        //                     {(isScrambled ? scrambledOptions : question.options.map(o => o.text)).map((text, idx) => (
+        //                         <li
+        //                             key={question.options[idx].id}
+        //                             className={`${isScrambled ? 'bg-black' : 'bg-[#9f9f9f]'} ${isScrambled ? 'text-green-400' : 'text-black'} px-4 py-1 rounded-xl font-medium lg:text-xl text-xs content-center leading-tight`}
+        //                         >
+        //                             {/* <span className="mr-2">{option.id.toUpperCase()}.</span> */}
+        //                             {text}
+        //                         </li>
+        //                     ))}
+        //                 </ul>
+        //             </div>
+        //         )}
+        //     </Popup>
+            
+        // </div>
+
         <div className="h-screen bg-black grid grid-cols-2 grid-rows-2 justify-center items-center gap-3 p-3">
-            <PlayCard name="Chanh" health={5} borderColor="blue" />
+            {/* <PlayCard name="Chanh" health={5} borderColor="blue" />
             <PlayCard name="HaDo" health={2} borderColor="red" />
             <PlayCard name="Sieu Nhan Long Long" health={3} borderColor="green" />
-            <PlayCard name="Sieu Nhan Long Long" health={4} borderColor="yellow" />
+            <PlayCard name="Sieu Nhan Long Long" health={4} borderColor="yellow" /> */}
 
-
-            <Popup className="w-3/5 h-5/6" show={showPopup} onClose={handleClosePopup} sabotageName="CodeRain">
-                {question && (
-                    <div className={` p-6 text-left  ${isScrambled ? 'text-green-500' : 'text-white'}`}>
-                        <h2 className="lg:text-2xl text-sm font-bold mb-5 "> {isScrambled ? scrambledQuestion : question.question}</h2>
-                        <ul className=" grid grid-cols-2 grid-rows-2 gap-5">
-                            {(isScrambled ? scrambledOptions : question.options.map(o => o.text)).map((text, idx) => (
-                                <li
-                                    key={question.options[idx].id}
-                                    className={`${isScrambled ? 'bg-black' : 'bg-[#9f9f9f]'} ${isScrambled ? 'text-green-400' : 'text-black'} px-4 py-1 rounded-xl font-medium lg:text-xl text-xs content-center leading-tight`}
-                                >
-                                    {/* <span className="mr-2">{option.id.toUpperCase()}.</span> */}
-                                    {text}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </Popup>
+            {players.map((player, idx) => (
+                <PlayCard
+                key={player.id || idx}
+                name={player.name}
+                health={player.health || 5} // default to 5 if not sent
+                borderColor={["blue", "red", "green", "yellow"][idx % 4]}
+                />
+            ))}
         </div>
     );
 }
