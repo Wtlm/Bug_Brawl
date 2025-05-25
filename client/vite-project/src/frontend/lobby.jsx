@@ -125,17 +125,10 @@ export default function Lobby() {
     setIsFindingMatch(false);
     setCountdown(null);
 
-    if (roomCode && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ action: "leave_room" }));
-    }
+    sendPayload({ action: "leave_room", name: playerName.trim(), room: joinRoomCode.trim() });
   };
 
   const handleCancelFindMatch = () => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      // Instead of closing, send cancel action
-      socketRef.current.send(JSON.stringify({ action: "cancel_find_match" }));
-    }
-
     setIsFindingMatch(false);
     setSelectedLabel('');
     setShowPopup(false);
@@ -144,6 +137,8 @@ export default function Lobby() {
     setRoomCode("");
     setIsHost(false);
     setPlayerCount(1);
+
+    sendPayload({ action: "cancel_find_match", name: playerName.trim() });
   };
 
   const startCountdown = (seconds) => {
@@ -334,6 +329,13 @@ export default function Lobby() {
           <div className="flex flex-col justify-center text-center items-center h-full">
             <p className="text-lg">Waiting for host to start the game...</p>
             <p className="text-lg">Players: {playerCount}/4</p>
+            <motion.button
+              className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1"
+              whileHover={{ scale: 0.9 }}
+              onClick={handleClosePopup}
+            >
+              Leave Room
+            </motion.button>
           </div>
         )}
 
