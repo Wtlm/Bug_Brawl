@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { delay, motion } from "framer-motion";
 import { getSocket } from "../socket/socket.js";
 import Popup from "../widget/popup";
+import { LobbyHandlers } from '../socket/lobbyHandlers.js';
 
 export default function Lobby() {
   const buttonLabels = ["Create Match", "Join Match", "Find Match"];
@@ -15,223 +16,56 @@ export default function Lobby() {
   const [showWaitingForHost, setShowWaitingForHost] = useState(false);
   const [playerCount, setPlayerCount] = useState(1);
   const [isHost, setIsHost] = useState(false);
+  const [isNewHost, setIsNewHost] = useState(false);
   const [status, setStatus] = useState("");
   const [isFindingMatch, setIsFindingMatch] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const socketRef = useRef(null);
   const navigate = useNavigate();
+  const handlers = new LobbyHandlers(
+    // States
+    {
+      playerName,
+      roomCode,
+      joinRoomCode,
+      showJoinCodeInput,
+      showWaitingForHost,
+      playerCount,
+      isNewHost,
+      isHost,
+      status,
+      isFindingMatch,
+      countdown
+    },
+    // Setters
+    {
+      setSelectedLabel,
+      setShowPopup,
+      setPlayerName,
+      setRoomCode,
+      setJoinRoomCode,
+      setShowJoinCodeInput,
+      setShowWaitingForHost,
+      setPlayerCount,
+      setIsNewHost,
+      setIsHost,
+      setStatus,
+      setIsFindingMatch,
+      setCountdown
+    },
+    socketRef,
+    navigate
+  );
 
   useEffect(() => {
     // Create WebSocket once on component mount
     if (!socketRef.current) {
-      getOrCreateSocket();
+      handlers.getOrCreateSocket();
     }
     // Clean up WebSocket connection on component unmount
     return () => {
     };
   }, []);
-
-  const sendPayload = (payload) => {
-    if (!socketRef.current) {
-      getOrCreateSocket();
-    }
-
-    if (!socketRef.current) {
-      alert("WebSocket is not connected.");
-      return;
-    }
-
-    if (socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(payload));
-    } else if (socketRef.current.readyState === WebSocket.CONNECTING) {
-      // Send when socket opens
-      socketRef.current.onopen = () => {
-        socketRef.current.send(JSON.stringify(payload));
-      };
-    } else {
-      alert("WebSocket connection is not ready. Please refresh the page.");
-    }
-  };
-
-  const handleButtonClick = (label) => {
-    if (!playerName.trim()) {
-      alert("Please enter your name.");
-      return;
-    }
-
-    setSelectedLabel(label);
-    setShowPopup(true);
-
-    // Reset UI states
-    setStatus("");
-    setRoomCode("");
-    setPlayerCount(1);
-    setIsHost(false);
-    setCountdown(null);
-    setShowWaitingForHost(false);
-    setShowJoinCodeInput(false);
-    setIsFindingMatch(false);
-
-    if (label === "Join Match") {
-      setShowJoinCodeInput(true);
-      return;
-    }
-
-    if (label === "Find Match") {
-      setIsFindingMatch(true);
-    }
-
-    // Prepare payload depending on label
-    let payload;
-    if (label === "Create Match") {
-      payload = { action: "create", name: playerName.trim() };
-    } else if (label === "Find Match") {
-      payload = { action: "find_match", name: playerName.trim() };
-    }
-
-    if (payload) {
-      sendPayload(payload);
-    }
-  };
-
-  const handleJoinRoom = () => {
-    if (!joinRoomCode.trim()) {
-      alert("Please enter a room code.");
-      return;
-    }
-
-    setShowJoinCodeInput(false);
-
-    // Send join payload via existing socket connection
-    sendPayload({ action: "join", name: playerName.trim(), room: joinRoomCode.trim() });
-  };
-
-  const handleStartGame = () => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ action: "start_game" }));
-    }
-  };
-
-  const handleClosePopup = () => {
-    setShowPopup(false);
-    setSelectedLabel('');
-    setShowJoinCodeInput(false);
-    setShowWaitingForHost(false);
-    setJoinRoomCode('');
-    setRoomCode('');
-    setPlayerCount(1);
-    setIsHost(false);
-    setStatus("");
-    setIsFindingMatch(false);
-    setCountdown(null);
-
-    sendPayload({ action: "leave_room", name: playerName.trim(), room: joinRoomCode.trim() });
-  };
-
-  const handleCancelFindMatch = () => {
-    setIsFindingMatch(false);
-    setSelectedLabel('');
-    setShowPopup(false);
-    setStatus("");
-    setCountdown(null);
-    setRoomCode("");
-    setIsHost(false);
-    setPlayerCount(1);
-
-    sendPayload({ action: "cancel_find_match", name: playerName.trim() });
-  };
-
-  const startCountdown = (seconds) => {
-    setCountdown(seconds);
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === 1) {
-          clearInterval(interval);
-          navigate("/game");
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const getOrCreateSocket = () => {
-    socketRef.current = getSocket();
-
-    socketRef.current.onopen = () => {
-      console.log("WebSocket connected");
-    };
-
-    socketRef.current.onmessage = (event) => {
-      console.log("Received message:", event.data);
-      try {
-        const data = JSON.parse(event.data);
-        if (data.error) {
-          alert(data.error);
-          if (socketRef.current) socketRef.current.close();
-          setShowPopup(false);
-          return;
-        }
-
-        switch (data.type) {
-          case "room_created":
-            setIsHost(true);
-            setRoomCode(data.roomCode);
-            setPlayerCount(1);
-            break;
-          case "joined":
-            setIsHost(false);
-            setShowJoinCodeInput(false);
-            setShowWaitingForHost(true);
-            break;
-          case "searching":
-            setStatus("Finding Match");
-            break;
-          case "match_found":
-            setRoomCode(data.roomCode);
-            setIsHost(data.isHost);
-            setPlayerCount(data.playerCount || 2);
-            setStatus("Match found! Game will start soon...");
-            setIsFindingMatch(false);
-            startCountdown(5);
-            break;
-          case "waiting":
-            setPlayerCount(data.playerCount);
-            break;
-          case "room_destroyed":
-            alert(data.message || "The room has been closed by the host.");
-            handleClosePopup();
-            break;
-          case "left_room":
-            setRoomCode('');
-            setPlayerCount(1);
-            setIsHost(false);
-            setStatus('');
-            break;
-          case "start":
-            navigate("/game", { state: { players: data.players } });
-            break;
-          default:
-            console.warn("Unknown message type:", data.type);
-            break;
-        }
-      } catch (error) {
-        console.error("Error parsing message:", error);
-      }
-    };
-
-    socketRef.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      alert("Connection error. Please try again.");
-      setShowPopup(false);
-    };
-
-    socketRef.current.onclose = (event) => {
-      console.log("WebSocket closed:", event.code, event.reason);
-      socketRef.current = null;
-    };
-
-  };
 
   return (
     <div className="h-full w-full flex flex-col gap-3 justify-center items-center">
@@ -273,14 +107,14 @@ export default function Lobby() {
               damping: 20,
             }}
             whileHover={{ scale: 0.9 }}
-            onClick={() => handleButtonClick(label)}
+            onClick={() => handlers.handleButtonClick(label)}
           >
             {label}
           </motion.button>
         ))}
       </div>
 
-      <Popup show={showPopup} onClose={handleClosePopup} className="lg:w-1/4 lg:h-2/5">
+      <Popup show={showPopup} onClose={handlers.handleClosePopup} className="lg:w-1/4 lg:h-2/5">
         {selectedLabel === "Create Match" && !showWaitingForHost && (
           <div className="flex flex-col justify-between text-center items-center h-full">
             <div>
@@ -292,7 +126,27 @@ export default function Lobby() {
                 <motion.button
                   className="!text-black w-full !px-4 !py-2 !text-base bg-green-500 rounded"
                   whileHover={{ scale: 0.9 }}
-                  onClick={handleStartGame}
+                  onClick={handlers.handleStartGame}
+                >
+                  Start Game
+                </motion.button>
+              ) : (
+                <p>Waiting for more players...</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isNewHost && (
+          <div className="flex flex-col justify-center text-center items-center h-full">
+            <p className="text-lg mb-2">Room Code: <strong>{roomCode}</strong></p>
+            <p className="text-lg">Players: {playerCount}/4</p>
+            <div>
+              {playerCount >= 2 ? (
+                <motion.button
+                  className="!text-black w-full !px-4 !py-2 !text-base bg-green-500 rounded"
+                  whileHover={{ scale: 0.9 }}
+                  onClick={handlers.handleStartGame}
                 >
                   Start Game
                 </motion.button>
@@ -318,7 +172,7 @@ export default function Lobby() {
             <motion.button
               className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1"
               whileHover={{ scale: 0.9 }}
-              onClick={handleJoinRoom}
+              onClick={handlers.handleJoinRoom}
             >
               Join Room
             </motion.button>
@@ -332,7 +186,7 @@ export default function Lobby() {
             <motion.button
               className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1"
               whileHover={{ scale: 0.9 }}
-              onClick={handleClosePopup}
+              onClick={handlers.handleClosePopup}
             >
               Leave Room
             </motion.button>
@@ -348,7 +202,6 @@ export default function Lobby() {
             {!isFindingMatch && countdown !== null ? (
               // Show match found state
               <div className="mb-4">
-                <p className="text-lg">Room Code: <strong>{roomCode}</strong></p>
                 <p className="text-lg">Players: {playerCount}/4</p>
               </div>
             ) : isFindingMatch ? (
@@ -374,7 +227,7 @@ export default function Lobby() {
 
             {countdown === null && (
               <button
-                onClick={handleCancelFindMatch}
+                onClick={handlers.handleCancelFindMatch}
                 className="px-4 py-2 bg-red-500 text-black rounded hover:bg-red-600 transition"
               >
                 Cancel
