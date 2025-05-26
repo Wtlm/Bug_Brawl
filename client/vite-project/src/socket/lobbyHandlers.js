@@ -133,7 +133,6 @@ export class LobbyHandlers {
             this.setters.setCountdown((prev) => {
                 if (prev === 1) {
                     clearInterval(interval);
-                    this.navigate("/game");
                     return null;
                 }
                 return prev - 1;

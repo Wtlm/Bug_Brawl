@@ -67,6 +67,12 @@ export default function Lobby() {
     };
   }, []);
 
+  useEffect(() => {
+    if (countdown === 0 && isHost) {
+      navigate("/game");
+    }
+  }, [countdown, isHost]);
+
   return (
     <div className="h-full w-full flex flex-col gap-3 justify-center items-center">
       <motion.h1
