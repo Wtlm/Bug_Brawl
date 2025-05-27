@@ -66,33 +66,26 @@ func addToMatchQueue(client *Client) {
 
 		roomCode := generateRoomCode()
 
-		// Ensure room code is unique
-		// clientsMutex.Lock()
-		// for {
-		// 	if _, exists := clientsPerRoom[roomCode]; !exists {
-		// 		break
-		// 	}
-		// 	roomCode = generateRoomCode()
-		// }
-		// clientsPerRoom[roomCode] = matched
-		// clientsMutex.Unlock()
-		clientsPerRoom[roomCode] = matched
-		log.Printf("Match found for %d players in room %s\n", len(matched), roomCode)
+		room := &Room{
+			Code:    roomCode,
+			Clients: matched,
+		}
+		rooms[roomCode] = room
 
 		for i, c := range matched {
-			c.roomCode = roomCode
-			c.isHost = (i == 0) // First player is host
+			c.room = room
+			c.isHost = (i == 0)
 
 			err := c.conn.WriteJSON(map[string]interface{}{
 				"type":        "match_found",
-				"roomCode":    roomCode,
+				"roomCode":    room.Code,
 				"isHost":      c.isHost,
-				"playerCount": len(matched),
+				"playerCount": len(room.Clients),
 			})
 			if err != nil {
 				log.Printf("Error sending match_found to %s: %v\n", c.name, err)
 			}
-			broadcastPlayerCount(roomCode, len(matched))
+			broadcastPlayerCount(room)
 		}
 
 		// Start the game after a 5-second delay to allow players to see the match found message
@@ -107,107 +100,58 @@ func addToMatchQueue(client *Client) {
 			defer clientsMutex.Unlock()
 
 			// Check if room still exists before starting game
-			if roomClients, exists := clientsPerRoom[roomCode]; exists {
-				startGame(roomCode)
-				log.Printf("Game started in room %s with %d players\n", roomCode, len(roomClients))
+			if _, exists := rooms[room.Code]; exists {
+				startGame(room)
+				log.Printf("Game started in room %s with\n", room.Code)
 			} else {
-				log.Printf("Room %s no longer exists, cannot start game\n", roomCode)
+				log.Printf("Room %s no longer exists, cannot start game\n", room.Code)
 			}
 		}()
 	}
 }
 
-// func removeClientFromRoom(client *Client) {
-// 	roomClients, exists := clientsPerRoom[client.roomCode]
-// 	if !exists {
-// 		log.Printf("removeClientFromRoom: room %s does not exist for %s", client.roomCode, client.name)
-// 		return
-// 	}
-
-// 	// If the host is leaving, notify all other players that the room is being destroyed
-// 	if client.isHost && len(roomClients) > 1 {
-// 		// Notify all other players (excluding the host)
-// 		for _, c := range roomClients {
-// 			if c != client {
-// 				c.conn.WriteJSON(map[string]interface{}{
-// 					"type":    "room_destroyed",
-// 					"message": "The host has left the room. Room has been closed.",
-// 				})
-// 				// Also send left_room so client resets state
-// 				c.conn.WriteJSON(map[string]string{
-// 					"type": "left_room",
-// 				})
-// 			}
-// 		}
-// 		log.Printf("Host %s left room %s - notifying %d other players\n", client.name, client.roomCode, len(roomClients)-1)
-// 	}
-
-// 	// Remove client from room
-// 	for i, c := range roomClients {
-// 		if c == client {
-// 			clientsPerRoom[client.roomCode] = append(roomClients[:i], roomClients[i+1:]...)
-// 			break
-// 		}
-// 	}
-
-// 	// If room is empty or host left, delete it
-// 	if len(clientsPerRoom[client.roomCode]) == 0 || client.isHost {
-// 		delete(clientsPerRoom, client.roomCode)
-// 		log.Printf("Room %s deleted\n", client.roomCode)
-// 	} else {
-// 		// If a non-host left, make someone else host and broadcast updated player count
-// 		if len(clientsPerRoom[client.roomCode]) > 0 {
-// 			clientsPerRoom[client.roomCode][0].isHost = true
-// 			log.Printf("New host assigned in room %s\n", client.roomCode)
-// 		}
-// 		// Broadcast updated player count
-// 		broadcastPlayerCount(client.roomCode, len(clientsPerRoom[client.roomCode]))
-// 	}
-// }
-
 func removeClientFromRoom(client *Client) {
-	roomClients, exists := clientsPerRoom[client.roomCode]
-	if !exists {
-		log.Printf("removeClientFromRoom: room %s does not exist for %s", client.roomCode, client.name)
+	room := client.room
+	if room == nil {
+		log.Printf("removeClientFromRoom: room does not exist for %s", client.name)
 		return
 	}
 
 	// Remove client from room first
 	var remainingClients []*Client
-	for _, c := range roomClients {
+	for _, c := range room.Clients {
 		if c != client {
 			remainingClients = append(remainingClients, c)
 		}
 	}
-	clientsPerRoom[client.roomCode] = remainingClients
+	room.Clients = remainingClients
 
 	// If room is empty, delete it
 	if len(remainingClients) == 0 {
-		delete(clientsPerRoom, client.roomCode)
-		log.Printf("Room %s deleted (empty)\n", client.roomCode)
+		delete(rooms, room.Code)
+		log.Printf("Room %s deleted (empty)\n", room.Code)
 		return
 	}
 
 	// If the leaving client was the host, assign new host
 	if client.isHost {
 		// Assign the next player as host
-		remainingClients[0].isHost = true
-		remainingClients[0].roomCode = client.roomCode
-		log.Printf("New host assigned in room %s: %s\n", client.roomCode, remainingClients[0].name)
+		room.Clients[0].isHost = true
+		log.Printf("New host assigned in room %s: %s\n", room.Code, room.Clients[0].name)
 
 		// Notify all remaining players about the host change
 		for _, c := range remainingClients {
 			c.conn.WriteJSON(map[string]interface{}{
 				"type":     "host_changed",
-				"isHost":   c == remainingClients[0],
-				"roomCode": client.roomCode,
+				"isHost":   c == room.Clients[0],
+				"roomCode": room.Code,
 				"message":  "A new host has been assigned.",
 			})
 		}
 	}
 
 	// Broadcast updated player count to remaining players
-	broadcastPlayerCount(client.roomCode, len(remainingClients))
+	broadcastPlayerCount(room)
 }
 
 func removePlayerFromQueue(client *Client) {
@@ -222,34 +166,34 @@ func removePlayerFromQueue(client *Client) {
 	queueMutex.Unlock()
 }
 
-func broadcastPlayerCount(room string, count int) {
+func broadcastPlayerCount(room *Room) {
 	playerNames := []string{}
-	for _, c := range clientsPerRoom[room] {
+	for _, c := range room.Clients {
 		playerNames = append(playerNames, c.name)
 	}
 
-	for _, c := range clientsPerRoom[room] {
+	for _, c := range room.Clients {
 		c.conn.WriteJSON(map[string]interface{}{
 			"type":        "waiting",
-			"playerCount": count,
+			"playerCount": len(room.Clients),
 			"players":     playerNames,
 		})
 	}
 }
 
-func startGame(room string) {
+func startGame(room *Room) {
 	players := []map[string]interface{}{}
-	for _, c := range clientsPerRoom[room] {
+	for _, c := range room.Clients {
 		players = append(players, map[string]interface{}{
 			"name":   c.name,
 			"health": 5,
 		})
 	}
-	for _, c := range clientsPerRoom[room] {
+	for _, c := range room.Clients {
 		c.conn.WriteJSON(map[string]interface{}{
 			"type":    "start",
 			"players": players,
 		})
 	}
-	log.Printf("Game started in room %s\n", room)
+	log.Printf("Game started in room %v\n", room)
 }

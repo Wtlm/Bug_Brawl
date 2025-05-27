@@ -10,23 +10,29 @@ func handleCreateRoom(client *Client, conn *websocket.Conn) {
 	removePlayerFromQueue(client)
 
 	roomCode := generateRoomCode()
-	// Ensure room code is unique
-	for {
-		if _, exists := clientsPerRoom[roomCode]; !exists {
-			break
-		}
-		roomCode = generateRoomCode()
+	room := &Room{
+		Code:    roomCode,
+		Clients: []*Client{client},
 	}
+	// Ensure room code is unique
+	// for {
+	// 	if _, exists := clientsPerRoom[roomCode]; !exists {
+	// 		break
+	// 	}
+	// 	roomCode = generateRoomCode()
+	// }
 
-	client.roomCode = roomCode
+	client.room = room
 	client.isHost = true
-	clientsPerRoom[roomCode] = []*Client{client}
+	rooms[roomCode] = room
 
 	log.Printf("Room %s created by %s\n", roomCode, client.name)
 
 	err := conn.WriteJSON(map[string]interface{}{
-		"type":     "room_created",
-		"roomCode": roomCode,
+		"type": "room_created",
+		"room": roomCode,
+		"id":   client.id,
+		"name": client.name,
 	})
 	if err != nil {
 		log.Printf("Error sending room_created message: %v\n", err)
@@ -41,35 +47,42 @@ func handleJoinRoom(client *Client, conn *websocket.Conn, msg Message) {
 		clientsMutex.Unlock()
 		return
 	}
-	roomClients, exists := clientsPerRoom[msg.Room]
+	room, exists := rooms[msg.Room]
 	if !exists {
 		conn.WriteJSON(map[string]string{"error": "Room does not exist"})
 		clientsMutex.Unlock()
 		return
 	}
-	if len(roomClients) >= 4 {
+	if len(room.Clients) >= 4 {
 		conn.WriteJSON(map[string]string{"error": "Room is full"})
 		clientsMutex.Unlock()
 		return
 	}
 
-	client.roomCode = msg.Room
+	client.room = room
 	client.isHost = false
-	clientsPerRoom[msg.Room] = append(clientsPerRoom[msg.Room], client)
+	room.Clients = append(room.Clients, client)
 
 	conn.WriteJSON(map[string]interface{}{
 		"type": "joined",
+		"id":   client.id,
+		"name": client.name,
 	})
 
-	log.Printf("%s joined room %s\n", client.name, msg.Room)
-	broadcastPlayerCount(client.roomCode, len(clientsPerRoom[client.roomCode]))
+	log.Printf("%s joined room %s\n", client.name, room.Code)
+	broadcastPlayerCount(room)
 }
 
 func handleFindMatch(client *Client, conn *websocket.Conn) {
 	removePlayerFromQueue(client)
 
+	client.isHost = false
+	client.room = nil
+
 	err := conn.WriteJSON(map[string]string{
 		"type": "searching",
+		"id":   client.id,
+		"name": client.name,
 	})
 	if err != nil {
 		log.Printf("Error sending searching message: %v\n", err)
@@ -79,39 +92,31 @@ func handleFindMatch(client *Client, conn *websocket.Conn) {
 }
 
 func handleStartGame(client *Client, conn *websocket.Conn) {
-	if client.roomCode == "" {
+	room := client.room
+	if room == nil {
 		conn.WriteJSON(map[string]string{"error": "Not in any room"})
-		clientsMutex.Unlock()
-		return
-	}
-
-	roomClients, exists := clientsPerRoom[client.roomCode]
-	if !exists {
-		conn.WriteJSON(map[string]string{"error": "Room does not exist"})
 		clientsMutex.Unlock()
 		return
 	}
 
 	if !client.isHost {
 		conn.WriteJSON(map[string]string{"error": "Only the host can start the game"})
-		clientsMutex.Unlock()
 		return
 	}
 
-	if len(roomClients) < 2 {
+	if len(room.Clients) < 2 {
 		conn.WriteJSON(map[string]string{"error": "Need at least 2 players to start"})
-		clientsMutex.Unlock()
 		return
 	}
 
-	startGame(client.roomCode)
-	log.Printf("Host %s started the game in room %s\n", client.name, client.roomCode)
+	startGame(room)
+	log.Printf("Host %s started the game in room %s\n", client.name, room.Code)
 }
 
 func handleCancelFindMatch(client *Client, conn *websocket.Conn) {
 	removePlayerFromQueue(client)
 
-	client.roomCode = ""
+	client.room = nil
 	client.isHost = false
 	err := conn.WriteJSON(map[string]string{
 		"type": "cancelled",
@@ -124,11 +129,11 @@ func handleCancelFindMatch(client *Client, conn *websocket.Conn) {
 }
 
 func handleLeaveRoom(client *Client, conn *websocket.Conn) {
-	if client.roomCode != "" {
+	if client.room != nil {
 		removeClientFromRoom(client)
-		client.isHost = false
-		client.roomCode = ""
 		conn.WriteJSON(map[string]string{"type": "left_room"})
 		log.Printf("%s left the room\n", client.name)
 	}
+	client.room = nil
+	client.isHost = false
 }

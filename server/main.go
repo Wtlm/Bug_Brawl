@@ -6,8 +6,14 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
+
+type Room struct {
+	Code    string
+	Clients []*Client
+}
 
 type Message struct {
 	Action string `json:"action"`
@@ -16,16 +22,17 @@ type Message struct {
 }
 
 type Client struct {
-	conn     *websocket.Conn
-	name     string
-	roomCode string
-	isHost   bool
+	conn   *websocket.Conn
+	id     string
+	name   string
+	room   *Room
+	isHost bool
 }
 
 var (
-	clientsPerRoom = make(map[string][]*Client)
-	clientsMutex   sync.Mutex
-	upgrader       = websocket.Upgrader{
+	rooms        = make(map[string]*Room)
+	clientsMutex sync.Mutex
+	upgrader     = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 )
@@ -81,7 +88,9 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	log.Println("WebSocket connection established")
 
-	client := &Client{conn: conn}
+	client := &Client{
+		conn: conn,
+		id:   uuid.NewString()}
 
 	for {
 		_, msgBytes, err := conn.ReadMessage()
@@ -147,7 +156,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 	queueMutex.Unlock()
 
-	if client.roomCode != "" {
+	if client.room.Code != "" {
 		removeClientFromRoom(client)
 	}
 }

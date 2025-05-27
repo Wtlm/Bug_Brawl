@@ -181,7 +181,7 @@ export class LobbyHandlers {
             case "room_created":
                 this.setters.setIsHost(true);
                 this.setters.setIsNewHost(false);
-                this.setters.setRoomCode(data.roomCode);
+                this.setters.setRoomCode(data.room);
                 this.setters.setPlayerCount(1);
                 break;
             case "joined":
