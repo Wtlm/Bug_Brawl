@@ -3,6 +3,11 @@ import { motion } from "framer-motion";
 import { animate, eases } from 'animejs';
 import bug2Gif from "../assets/image/bug2.gif";
 import Bulb from "../assets/image/bulb.png";
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from "framer-motion";
+import { animate, eases } from 'animejs';
+import bug2Gif from "../assets/image/bug2.gif";
+import Bulb from "../assets/image/bulb.png";
 
 function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
   const width = window.innerWidth;
@@ -44,6 +49,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
       case "BugEat":
         setBugEatActive(true);
         setSabotage("");
+        break;
       case "FakePopup":
         setFakePopupActive(true);
         setSabotage("");
@@ -54,6 +60,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
         break;
       case "Flicker":
         setFlickerActive(true);
+        break;
       default:
         setSabotage(sabotageName);
     }
@@ -137,7 +144,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
     const interval = setInterval(() => {
       if (count >= totalPopups) {
         clearInterval(interval);
-        return prev;
+        return;
       }
       setFakePopups(prev => {
         const newPopup = {
@@ -203,6 +210,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
   }, [codeRainActive]);
 
 
+
   if (!show) return null;
 
   return (
@@ -226,7 +234,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
         <motion.button
           className="absolute -top-10 right-4 !border-none !outline-none !bg-transparent text-black text-3xl !p-0"
           whileHover={{ scale: 0.9 }}
-          onClick={onClose}
+
         >
           &times;
         </motion.button>

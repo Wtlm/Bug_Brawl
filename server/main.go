@@ -2,40 +2,97 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"sync"
-
-	"github.com/gorilla/websocket"
 )
 
 type Message struct {
-	Action string `json:"action"`
-	Name   string `json:"name"`
-	Room   string `json:"room,omitempty"`
+	Action     string `json:"action"`
+	Name       string `json:"name"`
+	Room       string `json:"room,omitempty"`
+	Answer     string `json:"answer,omitempty"`
+	AnswerTime int64  `json:"answerTime,omitempty"`
+}
+
+type Question struct {
+	ID      string   `json:"id"`
+	Text    string   `json:"text"`
+	Options []string `json:"options"`
+	Answer  string   `json:"answer"`
 }
 
 type Client struct {
+	id       string
 	conn     *websocket.Conn
 	name     string
 	roomCode string
 	isHost   bool
 }
 
+type PlayerAnswer struct {
+	Client     *Client
+	Answer     string
+	AnswerTime int64
+	Correct    bool
+}
+
+type Sabotage struct {
+	Name     string
+	Used     bool
+	TargetID string
+	UsedByID string
+}
+
+type Room struct {
+	Players       map[*Client]bool
+	Host          *Client
+	RoomCode      string
+	Question     *Question
+	QuestionStart int64
+	AnswerLog     []*PlayerAnswer
+	RoundMutex    sync.Mutex
+	// SabotageLog   map[string]string
+	// AllSabotages  map[string]*Sabotage
+	AvailableSabotages map[string][]*Sabotage
+	PlayerEffects map[string][]*Sabotage
+	SabotageSelection *SabotageSelection
+}
+
+type RoundResult struct {
+	CorrectPlayers   []*PlayerAnswer
+	IncorrectPlayers []*PlayerAnswer
+	Winner           *PlayerAnswer
+	Losers           []*PlayerAnswer
+}
+
+type SabotageSelection struct {
+	WinnerID string              
+	Choices  map[string][]string 
+	Pending  map[string]bool    
+} 
+
 var (
 	clientsPerRoom = make(map[string][]*Client)
 	clientsMutex   sync.Mutex
+	matchQueue     []*Client
+	queueMutex     sync.Mutex
 	upgrader       = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
+	rooms         = make(map[string]*Room)
+	roomsMutex    sync.RWMutex
+	questions     []Question
+	questionMutex sync.Mutex
 )
 
-var (
-	matchQueue []*Client
-	queueMutex sync.Mutex
-)
 
 func main() {
+	err := LoadQuestions("quiz.json")
+	if err != nil {
+		log.Fatal("Failed to load questions:", err)
+	}
 	// router := mux.NewRouter()
 
 	// // Enable CORS for development
@@ -65,7 +122,7 @@ func main() {
 	http.HandleFunc("/ws", handleWS)
 
 	log.Println("Server running on http://0.0.0.0:8080")
-	err := http.ListenAndServe("0.0.0.0:8080", nil)
+	err = http.ListenAndServe("0.0.0.0:8080", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +138,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	log.Println("WebSocket connection established")
 
-	client := &Client{conn: conn}
+	client := &Client{conn: conn, id: generateClientID()}
 
 	for {
 		_, msgBytes, err := conn.ReadMessage()
@@ -90,7 +147,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		log.Printf("Received raw message: %s", string(msgBytes))
+		log.Printf("Received raw message: %s", string(msgBytes))	
 
 		var msg Message
 		if err := json.Unmarshal(msgBytes, &msg); err != nil {
@@ -117,6 +174,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 			handleFindMatch(client, conn)
 
 		case "start_game":
+
 			handleStartGame(client, conn)
 
 		case "cancel_find_match":
@@ -124,6 +182,12 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 
 		case "leave_room":
 			handleLeaveRoom(client, conn)
+
+		case "player_answer":
+			handleAnswer(client, msg, conn)
+
+		case "use_sabotage":
+			handleUseSabotage(client, msg, conn)
 
 		default:
 			conn.WriteJSON(map[string]string{"error": "Invalid action"})
@@ -141,7 +205,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	for i, queuedClient := range matchQueue {
 		if queuedClient == client {
 			matchQueue = append(matchQueue[:i], matchQueue[i+1:]...)
-			log.Printf("Removed %s from match queue\n", client.name)
+			log.Printf("Removed %s (%s) from match queue\n", client.name, client.id)
 			break
 		}
 	}

@@ -9,6 +9,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+func generateClientID() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const length = 5
+
+	source := rand.NewSource(time.Now().UnixNano())
+	rng := rand.New(source)
+
+	var id strings.Builder
+	for i := 0; i < length; i++ {
+		id.WriteByte(charset[rng.Intn(len(charset))])
+	}
+	return id.String()
+}
+
 func generateRoomCode() string {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	const length = 4
@@ -88,6 +102,7 @@ func addToMatchQueue(client *Client) {
 				"roomCode":    roomCode,
 				"isHost":      c.isHost,
 				"playerCount": len(matched),
+				"id":          c.id,
 			})
 			if err != nil {
 				log.Printf("Error sending match_found to %s: %v\n", c.name, err)
@@ -108,8 +123,17 @@ func addToMatchQueue(client *Client) {
 
 			// Check if room still exists before starting game
 			if roomClients, exists := clientsPerRoom[roomCode]; exists {
-				startGame(roomCode)
-				log.Printf("Game started in room %s with %d players\n", roomCode, len(roomClients))
+				var host *Client
+				for _, c := range roomClients {
+					if c.isHost {
+						host = c
+						break
+					}
+				}
+				if host != nil {
+					startGame(roomCode, host) // Pass the host client to startGame
+					log.Printf("Game started in room %s with %d players\n", roomCode, len(roomClients))
+				}
 			} else {
 				log.Printf("Room %s no longer exists, cannot start game\n", roomCode)
 			}
@@ -202,6 +226,7 @@ func removeClientFromRoom(client *Client) {
 				"isHost":   c == remainingClients[0],
 				"roomCode": client.roomCode,
 				"message":  "A new host has been assigned.",
+				"id":       c.id,
 			})
 		}
 	}
@@ -233,14 +258,24 @@ func broadcastPlayerCount(room string, count int) {
 			"type":        "waiting",
 			"playerCount": count,
 			"players":     playerNames,
+			"id":          c.id,
 		})
 	}
 }
 
-func startGame(room string) {
+func startGame(room string, client *Client) {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
+
+	if _, exists := clientsPerRoom[room]; !exists {
+		log.Printf("startGame: room %s does not exist\n", room)
+		return
+	}
+
 	players := []map[string]interface{}{}
 	for _, c := range clientsPerRoom[room] {
 		players = append(players, map[string]interface{}{
+			"id":     c.id,
 			"name":   c.name,
 			"health": 5,
 		})
@@ -252,4 +287,26 @@ func startGame(room string) {
 		})
 	}
 	log.Printf("Game started in room %s\n", room)
+
+	newRoom := &Room{
+		Players:            make(map[*Client]bool),
+		Host:               client,
+		RoomCode:           room,
+		Question:           nil,
+		SabotageSelection:  nil,
+		AnswerLog:          []*PlayerAnswer{},
+		AvailableSabotages: make(map[string][]*Sabotage),
+		PlayerEffects:      make(map[string][]*Sabotage),
+	}
+	for _, c := range clientsPerRoom[room] {
+		newRoom.Players[c] = true
+		newRoom.AvailableSabotages[c.id] = GenerateInitialSabotageList()
+		newRoom.PlayerEffects[c.id] = []*Sabotage{}
+	}
+
+	roomsMutex.Lock()
+	rooms[room] = newRoom
+	roomsMutex.Unlock()
+
+	newRoom.StartQuestion()
 }
