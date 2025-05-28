@@ -14,22 +14,45 @@ func handleCreateRoom(client *Client, conn *websocket.Conn) {
 	roomCode := generateRoomCode()
 	// Ensure room code is unique
 	for {
-		if _, exists := clientsPerRoom[roomCode]; !exists {
+		if _, exists := rooms[roomCode]; !exists {
 			break
 		}
 		roomCode = generateRoomCode()
 	}
 
-	client.roomCode = roomCode
+	// client.roomCode = roomCode
 	client.isHost = true
-	clientsPerRoom[roomCode] = []*Client{client}
+	// clientsPerRoom[roomCode] = []*Client{client}
+	newRoom := &Room{
+		Players:           []*Client{client},
+		RoomCode:          roomCode,
+		Question:          nil,
+		SabotageSelection: nil,
+		AnswerLog:         []*PlayerAnswer{},
+		AvailableSabotages: map[string][]*Sabotage{
+			client.id: GenerateInitialSabotageList(),
+		},
+		PlayerEffects: map[string][]*Sabotage{
+			client.id: {},
+		},
+	}
+	// for _, c := range newRoom.Players{
+	// 	newRoom.Players,
+	// 	newRoom.AvailableSabotages[c.id] = GenerateInitialSabotageList(),
+	// 	newRoom.PlayerEffects[c.id] = []*Sabotage{}
+	// }
 
+	roomsMutex.Lock()
+	rooms[roomCode] = newRoom
+	roomsMutex.Unlock()
 
 	log.Printf("Room %s created by %s (%s)\n", roomCode, client.name, client.id)
 
 	err := conn.WriteJSON(map[string]interface{}{
 		"type":     "room_created",
 		"roomCode": roomCode,
+		"id":       client.id,
+		"name":     client.name,
 	})
 	if err != nil {
 		log.Printf("Error sending room_created message: %v\n", err)
@@ -44,37 +67,33 @@ func handleJoinRoom(client *Client, conn *websocket.Conn, msg Message) {
 		clientsMutex.Unlock()
 		return
 	}
-	roomClients, exists := clientsPerRoom[msg.Room]
+	room, exists := rooms[msg.Room]
 	if !exists {
 		conn.WriteJSON(map[string]string{"error": "Room does not exist"})
 		clientsMutex.Unlock()
 		return
 	}
-	if len(roomClients) >= 4 {
+	if len(room.Players) >= 4 {
 		conn.WriteJSON(map[string]string{"error": "Room is full"})
 		clientsMutex.Unlock()
 		return
 	}
 
-	client.roomCode = msg.Room
+	// client.roomCode = msg.Room
 	client.isHost = false
-	clientsPerRoom[msg.Room] = append(clientsPerRoom[msg.Room], client)
+	room.Players = append(room.Players, client)
+	room.PlayerEffects[client.id] = GenerateInitialSabotageList()
 
-	roomsMutex.RLock()
-	room := rooms[msg.Room]
-	roomsMutex.RUnlock()
-
-	if room != nil {
-		room.Players[client] = true
-		room.PlayerEffects[client.id] = GenerateInitialSabotageList()
-	}
+	// roomsMutex.RLock()
+	// room := rooms[msg.Room]
+	// roomsMutex.RUnlock()
 
 	conn.WriteJSON(map[string]interface{}{
 		"type": "joined",
 	})
 
 	log.Printf("%s (%s) joined room %s\n", client.name, client.id, msg.Room)
-	broadcastPlayerCount(client.roomCode, len(clientsPerRoom[client.roomCode]))
+	broadcastPlayerCount(room)
 }
 
 func handleFindMatch(client *Client, conn *websocket.Conn) {
@@ -94,18 +113,18 @@ func handleStartGame(client *Client, conn *websocket.Conn) {
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
 
-	if client.roomCode == "" {
+	room := client.room
+	if room == nil {
 		conn.WriteJSON(map[string]string{"error": "Not in any room"})
-		clientsMutex.Unlock()
 		return
 	}
 
-	roomClients, exists := clientsPerRoom[client.roomCode]
-	if !exists {
-		conn.WriteJSON(map[string]string{"error": "Room does not exist"})
-		clientsMutex.Unlock()
-		return
-	}
+	// roomClients, exists := clientsPerRoom[client.roomCode]
+	// if !exists {
+	// 	conn.WriteJSON(map[string]string{"error": "Room does not exist"})
+	// 	clientsMutex.Unlock()
+	// 	return
+	// }
 
 	if !client.isHost {
 		conn.WriteJSON(map[string]string{"error": "Only the host can start the game"})
@@ -113,20 +132,20 @@ func handleStartGame(client *Client, conn *websocket.Conn) {
 		return
 	}
 
-	if len(roomClients) < 2 {
+	if len(room.Players) < 2 {
 		conn.WriteJSON(map[string]string{"error": "Need at least 2 players to start"})
 		clientsMutex.Unlock()
 		return
 	}
 
-	startGame(client.roomCode, client)
-	log.Printf("Host %s started the game in room %s\n", client.name, client.roomCode)
+	startGame(room)
+	log.Printf("Host %s started the game in room %s\n", client.name, room.RoomCode)
 }
 
 func handleCancelFindMatch(client *Client, conn *websocket.Conn) {
 	removePlayerFromQueue(client)
 
-	client.roomCode = ""
+	client.room = nil
 	client.isHost = false
 	err := conn.WriteJSON(map[string]string{
 		"type": "cancelled",
@@ -139,25 +158,26 @@ func handleCancelFindMatch(client *Client, conn *websocket.Conn) {
 }
 
 func handleLeaveRoom(client *Client, conn *websocket.Conn) {
-	if client.roomCode != "" {
+	if client.room != nil {
 		removeClientFromRoom(client)
 		client.isHost = false
-		client.roomCode = ""
+		client.room = nil
 		conn.WriteJSON(map[string]string{"type": "left_room"})
 		log.Printf("%s left the room\n", client.name)
 	}
 }
 
 func handleAnswer(client *Client, msg Message, conn *websocket.Conn) {
-	roomsMutex.RLock()
-	room := rooms[client.roomCode]
-	roomsMutex.RUnlock()
-
-	if client.roomCode == "" {
-		conn.WriteJSON(map[string]string{"error": "Not in any room"})
-		clientsMutex.Unlock()
+	if client.Health <= 0 {
+		conn.WriteJSON(map[string]string{
+			"error": "You've been eliminated and cannot answer anymore.",
+		})
 		return
 	}
+
+	roomsMutex.RLock()
+	room := client.room
+	roomsMutex.RUnlock()
 
 	if room == nil {
 		conn.WriteJSON(map[string]string{"error": "Room not found"})
@@ -196,37 +216,31 @@ func handleAnswer(client *Client, msg Message, conn *websocket.Conn) {
 	})
 	if len(room.AnswerLog) == len(room.Players) {
 		result := room.EvaluateRoundResults()
+		room.CalculateHealth(result.Winner, result.Losers)
 
 		// Broadcast round result
-		for p := range room.Players {
+		loserNames := []string{}
+		for _, l := range result.Losers {
+			if l.Client != nil {
+				loserNames = append(loserNames, l.Client.name)
+			}
+		}
+
+		for _, p := range room.Players {
 			p.conn.WriteJSON(map[string]interface{}{
-				"type":    "round_result",
-				"winner":  result.Winner.Client.name,
-				"results": result,
+				"type":   "round_result",
+				"winner": result.Winner.Client.name,
+				"losers": loserNames,
 			})
 		}
 
-		// Save result for sabotage step
 		room.AssignSabotagesToLosers(result)
-
-		// If only one player left → end game
-		if len(room.Players) <= 1 {
-
-			for p := range room.Players {
-				p.conn.WriteJSON(map[string]string{
-					"type":    "game_over",
-					"message": "You are the last player standing!",
-				})
-			}
-			return
-		}
-
 	}
 
 }
 
 func handleUseSabotage(winner *Client, msg Message, conn *websocket.Conn) {
-	room := rooms[winner.roomCode]
+	room := winner.room
 	if room == nil {
 		conn.WriteJSON(map[string]string{"error": "Room not found"})
 		return
@@ -247,7 +261,7 @@ func handleUseSabotage(winner *Client, msg Message, conn *websocket.Conn) {
 	// Apply to all losers (those in the choices map)
 	for playerID := range room.SabotageSelection.Choices {
 		targetName := "Unknown"
-		for client := range room.Players {
+		for _, client := range room.Players {
 			if client.id == playerID {
 				targetName = client.name
 				break
@@ -280,12 +294,12 @@ func handleUseSabotage(winner *Client, msg Message, conn *websocket.Conn) {
 	}
 
 	// Notify all players in the room
-	for c := range room.Players {
+	for _, c := range room.Players {
 		c.conn.WriteJSON(map[string]interface{}{
-			"type":      "sabotage_applied",
-			"sabotage":  sabotageName,
-			"usedBy":    winner.name,
-			"targets": targetInfos,
+			"type":     "sabotage_applied",
+			"sabotage": sabotageName,
+			"usedBy":   winner.name,
+			"targets":  targetInfos,
 		})
 	}
 

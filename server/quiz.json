@@ -1,0 +1,899 @@
+[
+    {
+        "id": 1,
+        "question": "How do you declare a multidimensional array in Go?",
+        "options": [
+            {
+                "id": "a",
+                "text": "var arr [][]int"
+            },
+            {
+                "id": "b",
+                "text": "arr := [][]"
+            },
+            {
+                "id": "c",
+                "text": "var arr [][]"
+            },
+            {
+                "id": "d",
+                "text": "arr = new [][]"
+            }
+        ],
+        "correctAnswer": "a"
+    },
+    {
+        "id": 2,
+        "question": "What happens if you try to access an index outside the bounds of an array in Go?",
+        "options": [
+            {
+                "id": "a",
+                "text": "A runtime error occurs"
+            },
+            {
+                "id": "b",
+                "text": "The program terminates"
+            },
+            {
+                "id": "c",
+                "text": "The index wraps around to the beginning of the array"
+            },
+            {
+                "id": "d",
+                "text": "It returns the default value for the array element type"
+            }
+        ],
+        "correctAnswer": "a"
+    },
+    {
+        "id": 3,
+        "question": "Who developed the Go programming language?",
+        "options": [
+            {
+                "id": "a",
+                "text": "Microsoft"
+            },
+            {
+                "id": "b",
+                "text": "Google"
+            },
+            {
+                "id": "c",
+                "text": "Apple"
+            },
+            {
+                "id": "d",
+                "text": "Facebook"
+            }
+        ],
+        "correctAnswer": "b"
+    },
+    {
+        "id": 4,
+        "question": "What is Go's approach to managing dependencies?",
+        "options": [
+            {
+                "id": "a",
+                "text": "Go does not support external dependencies"
+            },
+            {
+                "id": "b",
+                "text": "Go uses a package manager called \"gopkg\""
+            },
+            {
+                "id": "c",
+                "text": "Go uses a module system with the \"go mod\" command"
+            },
+            {
+                "id": "d",
+                "text": "Go relies on manual management of dependencies"
+            }
+        ],
+        "correctAnswer": "c"
+    },
+    {
+        "id": 5,
+        "question": "What is the shorthand syntax for declaring and initializing multiple variables in Go?",
+        "options": [
+            {
+                "id": "a",
+                "text": "var x, y, z int = 1, 2, 3"
+            },
+            {
+                "id": "b",
+                "text": "x, y, z := 1, 2, 3"
+            },
+            {
+                "id": "c",
+                "text": "x, y, z = 1, 2, 3"
+            },
+            {
+                "id": "d",
+                "text": "var int x = 1, y = 2, z = 3"
+            }
+        ],
+        "correctAnswer": "b"
+    },
+    {
+        "id": 6,
+        "question": "Which of the following statements about TCP socket programming in Go is true?",
+        "options": [
+            {
+                "id": "a",
+                "text": "Go uses goroutines to handle concurrent connections."
+            },
+            {
+                "id": "b",
+                "text": "Go only supports blocking I/O for TCP socket programming."
+            },
+            {
+                "id": "c",
+                "text": "Go does not provide functions for reading and writing binary data over TCP"
+            },
+            {
+                "id": "d",
+                "text": "All of above"
+            }
+        ],
+        "correctAnswer": "d"
+    },
+    {
+        "id": 7,
+        "question": "Which of the following is an example of a valid IPv6 socket address in Go?",
+        "options": [
+            {
+                "id": "a",
+                "text": "localhost:8080"
+            },
+            {
+                "id": "b",
+                "text": "192.168.1.1:9000"
+            },
+            {
+                "id": "c",
+                "text": "[::1]:8080"
+            },
+            {
+                "id": "d",
+                "text": "All of above"
+            }
+        ],
+        "correctAnswer": "c"
+    },
+    {
+        "id": 8,
+        "question": "What is a socket in Go?",
+        "options": [
+            {
+                "id": "a",
+                "text": "A type used to establish a network connection"
+            },
+            {
+                "id": "b",
+                "text": "A data structure used for file I/O operations"
+            },
+            {
+                "id": "c",
+                "text": "A synchronization primitive for concurrent programming"
+            },
+            {
+                "id": "d",
+                "text": "A function for dynamic memory allocation"
+            }
+        ],
+        "correctAnswer": "a"
+    },
+    {
+        "id": 9,
+        "question": "What is the purpose of the net.Dial() function in Go?",
+        "options": [
+            {
+                "id": "a",
+                "text": "To establish a connection to a remote address"
+            },
+            {
+                "id": "b",
+                "text": "To send data over a socket"
+            },
+            {
+                "id": "c",
+                "text": "To close a socket connection"
+            },
+            {
+                "id": "d",
+                "text": "To listen for incoming connections"
+            }
+        ],
+        "correctAnswer": "a"
+    },
+    {
+        "id": 10,
+        "question": "What is the purpose of the net.ResolveTCPAddr() function in Go?",
+        "options": [
+            {
+                "id": "a",
+                "text": "To resolve a domain name to an IP address"
+            },
+            {
+                "id": "b",
+                "text": "To resolve a TCP address from a string representation"
+            },
+            {
+                "id": "c",
+                "text": "To establish a TCP connection"
+            },
+            {
+                "id": "d",
+                "text": "To close a TCP connection"
+            }
+        ],
+        "correctAnswer": "b"
+    },
+    {
+    "id": 11,
+    "question": "What is the purpose of the net.Conn interface in Go TCP socket programming?",
+    "options": [
+      {
+        "id": "a",
+        "text": "To represent a TCP listener"
+      },
+      {
+        "id": "b",
+        "text": "To represent a TCP connection"
+      },
+      {
+        "id": "c",
+        "text": "To represent a UDP connection"
+      },
+      {
+        "id": "d",
+        "text": "To represent a network address"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 12,
+    "question": "How can you set the read and write buffer sizes for a TCP connection in Go?",
+    "options": [
+      {
+        "id": "a",
+        "text": "By calling the conn.SetBufferSize() function"
+      },
+      {
+        "id": "b",
+        "text": "By setting the conn.ReadBufferSize and conn.WriteBufferSize fields"
+      },
+      {
+        "id": "c",
+        "text": "By calling the conn.SetReadBuffer() and conn.SetWriteBuffer() functions"
+      },
+      {
+        "id": "d",
+        "text": "By setting the conn.BufferSize field"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 13,
+    "question": "How can you determine the number of bytes that have been sent over a TCP connection in Go?",
+    "options": [
+      {
+        "id": "a",
+        "text": "By calling the conn.BytesSent() function"
+      },
+      {
+        "id": "b",
+        "text": "By checking the conn.SentBytes field"
+      },
+      {
+        "id": "c",
+        "text": "By calling the conn.SetBytesSent() function"
+      },
+      {
+        "id": "d",
+        "text": "By checking the value returned by conn.Write()"
+      }
+    ],
+    "correctAnswer": "d"
+  },
+  {
+    "id": 14,
+    "question": "Which field in the UDP header is used for error-checking?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Source Port"
+      },
+      {
+        "id": "b",
+        "text": "Destination Port"
+      },
+      {
+        "id": "c",
+        "text": "Checksum"
+      },
+      {
+        "id": "d",
+        "text": "Sequence number"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 15,
+    "question": "How can you distinguish between incoming packets in UDP?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Using sequence numbers"
+      },
+      {
+        "id": "b",
+        "text": "Using the source address and port"
+      },
+      {
+        "id": "c",
+        "text": "Using checksums"
+      },
+      {
+        "id": "d",
+        "text": "Using timestamps"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 16,
+    "question": "What happens if a UDP packet is received by a port for which there is no application bound to listen?",
+    "options": [
+      {
+        "id": "a",
+        "text": "The packet is silently dropped"
+      },
+      {
+        "id": "b",
+        "text": "The packet is stored in a buffer until an application binds to the port"
+      },
+      {
+        "id": "c",
+        "text": "An error message is sent back to the sender"
+      },
+      {
+        "id": "d",
+        "text": "The packet is forwarded to a default port"
+      }
+    ],
+    "correctAnswer": "a"
+  },
+  {
+    "id": 17,
+    "question": "UDP stands for?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Universal Data Protocol"
+      },
+      {
+        "id": "b",
+        "text": "Unreliable Data Protocol"
+      },
+      {
+        "id": "c",
+        "text": "User Datagram Protocol"
+      },
+      {
+        "id": "d",
+        "text": "User Data Packet"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 18,
+    "question": "Which of the following header fields is NOT present in a UDP packet?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Source Port"
+      },
+      {
+        "id": "b",
+        "text": "Destination Port"
+      },
+      {
+        "id": "c",
+        "text": "Sequence Number"
+      },
+      {
+        "id": "d",
+        "text": "Length"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 19,
+    "question": "What is the maximum size of a UDP payload in IPv4?",
+    "options": [
+      {
+        "id": "a",
+        "text": "65535 bytes"
+      },
+      {
+        "id": "b",
+        "text": "65527 bytes"
+      },
+      {
+        "id": "c",
+        "text": "65507 bytes"
+      },
+      {
+        "id": "d",
+        "text": "65495 bytes"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 20,
+    "question": "What is the default HTTPS port?",
+    "options": [
+      {
+        "id": "a",
+        "text": "80"
+      },
+      {
+        "id": "b",
+        "text": "8080"
+      },
+      {
+        "id": "c",
+        "text": "443"
+      },
+      {
+        "id": "d",
+        "text": "4430"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 21,
+    "question": "Which HTTP status code group means success?",
+    "options": [
+      {
+        "id": "a",
+        "text": "1XX"
+      },
+      {
+        "id": "b",
+        "text": "2XX"
+      },
+      {
+        "id": "c",
+        "text": "3XX"
+      },
+      {
+        "id": "d",
+        "text": "4XX"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 22,
+    "question": "Which protocol is used for communication between web browsers and web servers?",
+    "options": [
+      {
+        "id": "a",
+        "text": "HTTP"
+      },
+      {
+        "id": "b",
+        "text": "FTP"
+      },
+      {
+        "id": "c",
+        "text": "SMTP"
+      },
+      {
+        "id": "d",
+        "text": "TCP/IP"
+      }
+    ],
+    "correctAnswer": "a"
+  },
+  {
+    "id": 23,
+    "question": "Which HTTP header is used to specify the acceptable media types for the response?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Content-Type"
+      },
+      {
+        "id": "b",
+        "text": "Accept-Encoding"
+      },
+      {
+        "id": "c",
+        "text": "Accept-Language"
+      },
+      {
+        "id": "d",
+        "text": "Accept"
+      }
+    ],
+    "correctAnswer": "d"
+  },
+  {
+    "id": 24,
+    "question": "What is the purpose of the HTTP header 'Content-Length'?",
+    "options": [
+      {
+        "id": "a",
+        "text": "To specify the size of the content"
+      },
+      {
+        "id": "b",
+        "text": "To indicate the type of data being sent"
+      },
+      {
+        "id": "c",
+        "text": "To authenticate the client"
+      },
+      {
+        "id": "d",
+        "text": "To specify the language of the content"
+      }
+    ],
+    "correctAnswer": "a"
+  },
+  {
+    "id": 25,
+    "question": "Which HTTP method is used to send data to a server and create a new resource?",
+    "options": [
+      {
+        "id": "a",
+        "text": "GET"
+      },
+      {
+        "id": "b",
+        "text": "POST"
+      },
+      {
+        "id": "c",
+        "text": "PUT"
+      },
+      {
+        "id": "d",
+        "text": "DELETE"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 26,
+    "question": "What does gRPC stand for?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Google Remote Procedure Call"
+      },
+      {
+        "id": "b",
+        "text": "Golang Remote Procedure Call"
+      },
+      {
+        "id": "c",
+        "text": "General-purpose Remote Procedure Call"
+      },
+      {
+        "id": "d",
+        "text": "Go Remote Procedure Call"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 27,
+    "question": "What is the purpose of the service keyword in the .proto file?",
+    "options": [
+      {
+        "id": "a",
+        "text": "To define a new message type"
+      },
+      {
+        "id": "b",
+        "text": "To define a new service"
+      },
+      {
+        "id": "c",
+        "text": "To define a new RPC method"
+      },
+      {
+        "id": "d",
+        "text": "To define a new enum"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 28,
+    "question": "What is the primary advantage of using Protocol Buffers (Protobuf) over JSON for data serialization in gRPC?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Smaller message size"
+      },
+      {
+        "id": "b",
+        "text": "Faster serialization and deserialization"
+      },
+      {
+        "id": "c",
+        "text": "Stronger type-safety"
+      },
+      {
+        "id": "d",
+        "text": "All of the above"
+      }
+    ],
+    "correctAnswer": "d"
+  },
+  {
+    "id": 29,
+    "question": "Which of the following is a common use case for gRPC?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Microservices communication"
+      },
+      {
+        "id": "b",
+        "text": "Real-time chat applications"
+      },
+      {
+        "id": "c",
+        "text": "Internet of Things (IoT) device communication"
+      },
+      {
+        "id": "d",
+        "text": "All of the above"
+      }
+    ],
+    "correctAnswer": "d"
+  },
+  {
+    "id": 30,
+    "question": "What is the main advantage of using an RPC over a direct network socket connection?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Improved performance"
+      },
+      {
+        "id": "b",
+        "text": "Easier development and maintenance"
+      },
+      {
+        "id": "c",
+        "text": "Better security"
+      },
+      {
+        "id": "d",
+        "text": "All of the above"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 31,
+    "question": "What is the role of the gRPC load balancer?",
+    "options": [
+      {
+        "id": "a",
+        "text": "To distribute incoming requests across multiple gRPC server instances"
+      },
+      {
+        "id": "b",
+        "text": "To optimize the performance of gRPC communications"
+      },
+      {
+        "id": "c",
+        "text": "To provide authentication and authorization for gRPC clients"
+      },
+      {
+        "id": "d",
+        "text": "To handle error handling and retries for gRPC calls"
+      }
+    ],
+    "correctAnswer": "a"
+  },
+  {
+    "id": 32,
+    "question": "What is the main advantage of using Protocol Buffers (Protobuf) with gRPC?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Faster data serialization and deserialization"
+      },
+      {
+        "id": "b",
+        "text": "Easier integration with web-based applications"
+      },
+      {
+        "id": "c",
+        "text": "Stronger type-safety and schema enforcement"
+      },
+      {
+        "id": "d",
+        "text": "All of the above"
+      }
+    ],
+    "correctAnswer": "d"
+  },
+  {
+    "id": 33,
+    "question": "What is the main difference between a local procedure call and an RPC?",
+    "options": [
+      {
+        "id": "a",
+        "text": "The location of the procedure being called"
+      },
+      {
+        "id": "b",
+        "text": "The way the procedure is implemented"
+      },
+      {
+        "id": "c",
+        "text": "The way the parameters are passed"
+      },
+      {
+        "id": "d",
+        "text": "The way the return value is handled"
+      }
+    ],
+    "correctAnswer": "a"
+  },
+  {
+    "id": 34,
+    "question": "How does gRPC support streaming of data between clients and servers?",
+    "options": [
+      {
+        "id": "a",
+        "text": "By using unary method calls"
+      },
+      {
+        "id": "b",
+        "text": "By using server-streaming, client-streaming, or bidirectional-streaming method calls"
+      },
+      {
+        "id": "c",
+        "text": "By implementing custom streaming logic in the gRPC server"
+      },
+      {
+        "id": "d",
+        "text": "gRPC does not support streaming of data"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 35,
+    "question": "What is the main disadvantage of using an RPC compared to a direct network socket connection?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Increased latency"
+      },
+      {
+        "id": "b",
+        "text": "Lower throughput"
+      },
+      {
+        "id": "c",
+        "text": "More complex implementation"
+      },
+      {
+        "id": "d",
+        "text": "All of the above"
+      }
+    ],
+    "correctAnswer": "c"
+  },
+  {
+    "id": 36,
+    "question": "What is the primary purpose of an RPC?",
+    "options": [
+      {
+        "id": "a",
+        "text": "To execute a local procedure remotely"
+      },
+      {
+        "id": "b",
+        "text": "To enable client-server communication"
+      },
+      {
+        "id": "c",
+        "text": "To provide a higher-level API for network communication"
+      },
+      {
+        "id": "d",
+        "text": "All of the above"
+      }
+    ],
+    "correctAnswer": "d"
+  },
+  {
+    "id": 37,
+    "question": "What is the purpose of the grpc.WithInsecure() dial option in Golang",
+    "options": [
+      {
+        "id": "a",
+        "text": "To disable SSL/TLS security for the gRPC connection"
+      },
+      {
+        "id": "b",
+        "text": "To enable SSL/TLS security for the gRPC connection"
+      },
+      {
+        "id": "c",
+        "text": "To specify custom SSL/TLS configuration for the gRPC connection"
+      },
+      {
+        "id": "d",
+        "text": "To handle authentication and authorization for the gRPC connection"
+      }
+    ],
+    "correctAnswer": "a"
+  },
+  {
+    "id": 38,
+    "question": "Which protocol does gRPC use for communication?",
+    "options": [
+      {
+        "id": "a",
+        "text": "HTTP/1.1"
+      },
+      {
+        "id": "b",
+        "text": "HTTP/2"
+      },
+      {
+        "id": "c",
+        "text": "WebSocket"
+      },
+      {
+        "id": "d",
+        "text": "Raw Socket"
+      }
+    ],
+    "correctAnswer": "b"
+  },
+  {
+    "id": 39,
+    "question": "How does gRPC handle errors and exceptions?",
+    "options": [
+      {
+        "id": "a",
+        "text": "By returning HTTP status codes"
+      },
+      {
+        "id": "b",
+        "text": "By using a custom error handling mechanism"
+      },
+      {
+        "id": "c",
+        "text": "By throwing language-specific exceptions"
+      },
+      {
+        "id": "d",
+        "text": "All of the above"
+      }
+    ],
+    "correctAnswer": "b"
+  }
+]

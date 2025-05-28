@@ -16,19 +16,25 @@ type Message struct {
 	AnswerTime int64  `json:"answerTime,omitempty"`
 }
 
+type Option struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
 type Question struct {
-	ID      string   `json:"id"`
+	ID      int   `json:"id"`
 	Text    string   `json:"text"`
-	Options []string `json:"options"`
+	Options []Option `json:"options"`
 	Answer  string   `json:"answer"`
 }
 
 type Client struct {
-	id       string
-	conn     *websocket.Conn
-	name     string
-	roomCode string
-	isHost   bool
+	id     string
+	conn   *websocket.Conn
+	name   string
+	room   *Room
+	isHost bool
+	Health int 
 }
 
 type PlayerAnswer struct {
@@ -46,18 +52,18 @@ type Sabotage struct {
 }
 
 type Room struct {
-	Players       map[*Client]bool
-	Host          *Client
+	Players []*Client
+	// Host          *Client
 	RoomCode      string
-	Question     *Question
+	Question      *Question
 	QuestionStart int64
 	AnswerLog     []*PlayerAnswer
 	RoundMutex    sync.Mutex
 	// SabotageLog   map[string]string
 	// AllSabotages  map[string]*Sabotage
 	AvailableSabotages map[string][]*Sabotage
-	PlayerEffects map[string][]*Sabotage
-	SabotageSelection *SabotageSelection
+	PlayerEffects      map[string][]*Sabotage
+	SabotageSelection  *SabotageSelection
 }
 
 type RoundResult struct {
@@ -68,13 +74,13 @@ type RoundResult struct {
 }
 
 type SabotageSelection struct {
-	WinnerID string              
-	Choices  map[string][]string 
-	Pending  map[string]bool    
-} 
+	WinnerID string
+	Choices  map[string][]string
+	Pending  map[string]bool
+}
 
 var (
-	clientsPerRoom = make(map[string][]*Client)
+	// clientsPerRoom = make(map[string][]*Client)
 	clientsMutex   sync.Mutex
 	matchQueue     []*Client
 	queueMutex     sync.Mutex
@@ -86,7 +92,6 @@ var (
 	questions     []Question
 	questionMutex sync.Mutex
 )
-
 
 func main() {
 	err := LoadQuestions("quiz.json")
@@ -147,7 +152,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		log.Printf("Received raw message: %s", string(msgBytes))	
+		log.Printf("Received raw message: %s", string(msgBytes))
 
 		var msg Message
 		if err := json.Unmarshal(msgBytes, &msg); err != nil {
@@ -211,7 +216,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 	queueMutex.Unlock()
 
-	if client.roomCode != "" {
+	if client.room.RoomCode != "" {
 		removeClientFromRoom(client)
 	}
 }

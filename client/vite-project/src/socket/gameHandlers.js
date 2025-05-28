@@ -1,28 +1,32 @@
 // gameHandlers.js
+import { getSocket } from "./socket.js";
 
 export class GameHandler {
     constructor(socket, roomId, callbacks) {
-        this.socket = socket;
+        this.socket = getSocket();
         this.roomId = roomId;
         this.setPlayers = callbacks.setPlayers;
         this.setQuestion = callbacks.setQuestion;
         this.setShowPopup = callbacks.setShowPopup;
         this.setTimeLeft = callbacks.setTimeLeft;
         this.onTimeExpired = callbacks.onTimeExpired;
-        this.bugEatActiveRef = bugEatActiveRef;
+        // this.bugEatActiveRef = bugEatActiveRef;
         this.setChooseSabotage = callbacks.setChooseSabotage;
         this.setSabotageNoti = callbacks.setSabotageNoti;
         this.setPlayerEffects = callbacks.setPlayerEffects;
-        this.setCdeRainActive = callbacks.setCodeRainActive;
-
+        this.setCodeRainActive = callbacks.setCodeRainActive;
+        this.setRoundResultNoti = callbacks.setRoundResultNoti;
+        this.onGameOver = callbacks.onGameOver;
         this.timer = null;
 
         this.messageHandlers = {
-            player_list: this.handlePlayerList.bind(this),
+            player_info: this.handlePlayerList.bind(this),
             question: this.handleNewQuestion.bind(this),
-            update_health: this.handleUpdateHealth.bind(this),
+            // update_health: this.handleUpdateHealth.bind(this),
             choose_sabotage: this.handleChooseSabotage.bind(this),
             sabotage_applied: this.handleSabotageNoti.bind(this),
+            round_result: this.handleRoundResult.bind(this),
+            game_over: this.handleGameOver.bind(this),
         };
 
         this.init();
@@ -60,13 +64,13 @@ export class GameHandler {
             options: msg.options,
         };
         const effects = msg.effect || [];
-        
+
         this.setQuestion(question);
         this.setPlayerEffects(effects);
         this.setShowPopup(true);
 
         if (effects.includes("CodeRain")) {
-            this.setCdeRainActive(true);
+            this.setCodeRainActive(true);
         }
 
         const questionTime = effects.includes("BugEat") ? 20 : 30;
@@ -135,10 +139,34 @@ export class GameHandler {
         }
 
         this.setSabotageNoti?.(message);
-        setTimeout(() => this.setSabotageNoti?.(null), 5000);
+        setTimeout(() => this.setSabotageNoti?.(null), 3000);
     }
 
-    handleUpdateHealth(msg) {
-        this.setPlayers(msg.players);
+    handleRoundResult(msg) {
+        const { winner, losers } = msg;
+
+        let message = `Fatest Correct Answer (+1 heart):\n ${winner} `;
+
+        if (losers && losers.length > 0) {
+            message += `\nIncorrect Answer (-1 heart):\n ${losers.join(', ')}`;
+        }
+
+        this.setShowPopup(true);
+        this.setRoundResultNoti?.(message);
+        setTimeout(() => this.setRoundResultNoti?.(null), 3000);
     }
+
+    handleGameOver(msg) {
+        const { note } = msg;
+        this.setRoundResultNoti?.(note);
+
+        // Navigate or trigger the callback after a short delay if needed
+        setTimeout(() => {
+            this.setRoundResultNoti?.(null);
+            this.setShowPopup(false);
+            this.clearTimer();
+            this.onGameOver?.();
+        }, 300);
+    }
+
 }

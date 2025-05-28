@@ -10,7 +10,6 @@ import { GameHandler } from "../socket/gameHandlers.js";
 
 export default function Game() {
     const [showPopup, setShowPopup] = useState(false);
-    const [popupMode, setPopupMode] = useState("question");
     const [question, setQuestion] = useState(null);
     const [isScrambled, setIsScrambled] = useState(false);
     const [scrambledQuestion, setScrambledQuestion] = useState('');
@@ -28,6 +27,7 @@ export default function Game() {
     const currentPlayerId = location.state?.playerId;
     const currentEffects = playerEffects[currentPlayerId] || [];
     const sabotageName = currentEffects.length > 0 ? currentEffects[0] : "";
+    const [roundResultNoti, setRoundResultNoti] = useState(null);
 
 
     useEffect(() => {
@@ -43,14 +43,16 @@ export default function Game() {
                 // Add logic here to handle time expiry
             },
             setChooseSabotage,
+            setCodeRainActive,
             setSabotageNoti,
             setPlayerEffects,
+            setRoundResultNoti,
         });
 
         // Cleanup if needed
         return () => {
             gameHandler.current?.clearTimer?.();
-            socket.close();
+            // socket.close();
         };
     }, [roomId]);
 
@@ -143,6 +145,11 @@ export default function Game() {
                 {sabotageNoti && (
                     <div className=" p-6 text-center text-white lg:text-2xl text-sm font-bold mb-5">
                         {sabotageNoti}
+                    </div>
+                )}
+                {roundResultNoti && (
+                    <div className=" p-6 text-center text-white lg:text-2xl text-sm font-bold mb-5">
+                        {roundResultNoti}
                     </div>
                 )}
                 {chooseSabotage && (

@@ -5,8 +5,8 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"time"
 	"slices"
+	"time"
 )
 
 // LoadQuestions reads quiz.json and populates the questions slice
@@ -98,6 +98,50 @@ func (room *Room) EvaluateRoundResults() *RoundResult {
 		Winner:           winner,
 		Losers:           losers,
 	}
+}
+func (room *Room) CalculateHealth(winner *PlayerAnswer, losers []*PlayerAnswer) {
+	if winner != nil && winner.Client != nil {
+		client := winner.Client
+		if client.Health < 5 {
+			client.Health++
+			log.Printf("Player %s gains 1 health. Total: %d", client.id, client.Health)
+		}
+
+		client.conn.WriteJSON(map[string]interface{}{
+			"type":   "player_info",
+			"id":     client.id,
+			"name":   client.name,
+			"health": client.Health,
+		})
+	}
+
+	for _, client := range losers {
+		if client.Client == nil {
+			continue
+		}
+		c := client.Client
+		c.Health--
+
+		if c.Health <= 0 {
+			log.Printf("Player %s is out of the game!", c.id)
+			c.conn.WriteJSON(map[string]interface{}{
+				"type":   "player_info",
+				"id":     c.id,
+				"name":   c.name,
+				"health": c.Health,
+			})
+		} else {
+			log.Printf("Player %s loses 1 health. Remaining: %d", c.id, c.Health)
+			c.conn.WriteJSON(map[string]interface{}{
+				"type":   "player_info",
+				"id":     c.id,
+				"name":   c.name,
+				"health": c.Health,
+			})
+		}
+	}
+
+	room.CheckGameOver()
 }
 
 func (room *Room) AssignSabotagesToLosers(result *RoundResult) {
@@ -200,9 +244,9 @@ func RandomSabotage(losers []*PlayerAnswer, room *Room) {
 
 		loser.Client.conn.WriteJSON(map[string]interface{}{
 			"type":     "sabotage_applied",
-			"sabotage":  chosen.Name,
-			"usedBy":    "system",
-			"targets": loser.Client.name,
+			"sabotage": chosen.Name,
+			"usedBy":   "system",
+			"targets":  loser.Client.name,
 		})
 	}
 }
@@ -223,28 +267,61 @@ func (room *Room) StartQuestion() {
 
 	// Collect sabotage effects per player
 	playerEffects := make(map[string][]string)
-	for client := range room.Players {
+	for _, player := range room.Players {
 		var effects []string
-		for _, sabotage := range room.PlayerEffects[client.id] {
-			if sabotage.Used && sabotage.TargetID == client.id {
+		for _, sabotage := range room.PlayerEffects[player.id] {
+			if sabotage.Used && sabotage.TargetID == player.id {
 				effects = append(effects, sabotage.Name)
 			}
 		}
-		playerEffects[client.id] = effects
+		playerEffects[player.id] = effects
 	}
 
 	// Broadcast question to all players with their effects
-	for client := range room.Players {
-		err := client.conn.WriteJSON(map[string]interface{}{
+	for _, player := range room.Players {
+		err := player.conn.WriteJSON(map[string]interface{}{
 			"type":    "question",
 			"id":      question.ID,
 			"text":    question.Text,
 			"options": question.Options,
-			"effect":  playerEffects[client.id],
+			"effect":  playerEffects[player.id],
 		})
 		if err != nil {
-			log.Printf("error sending question to client %s: %v", client.id, err)
+			log.Printf("error sending question to client %s: %v", player.id, err)
 		}
 	}
 }
 
+func (room *Room) CheckGameOver() {
+	activePlayers := 0
+	var lastPlayer *Client
+
+	for _, client := range room.Players {
+		if client.Health > 0 {
+			activePlayers++
+			lastPlayer = client
+		}
+	}
+
+	if activePlayers <= 1 {
+		log.Println("Game over!")
+
+		// Broadcast winner (if any)
+		if activePlayers == 1 && lastPlayer != nil {
+			lastPlayer.conn.WriteJSON(map[string]interface{}{
+				"type": "game_over",
+				"note": "You win!",
+			})
+		}
+
+		// Notify all clients
+		for _, client := range room.Players {
+			if client != lastPlayer {
+				client.conn.WriteJSON(map[string]interface{}{
+					"type": "game_over",
+					"note": lastPlayer.name + " wins!",
+				})
+			}
+		}
+	}
+}

@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from "framer-motion";
-import { animate, eases } from 'animejs';
-import bug2Gif from "../assets/image/bug2.gif";
-import Bulb from "../assets/image/bulb.png";
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, time } from "framer-motion";
 import { animate, eases } from 'animejs';
 import bug2Gif from "../assets/image/bug2.gif";
 import Bulb from "../assets/image/bulb.png";
@@ -25,6 +20,14 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
   const [rainLine, setRainLine] = useState([]);
   const [scrambledText, setScrambledText] = useState(children);
   const [flickerActive, setFlickerActive] = useState(false);
+  const [blurryActive, setBlurryActive] = useState(false);
+  const [backwardTextActive, setBackwardTextActive] = useState(false);
+  const [mouseDriftActive, setMouseDriftActive] = useState(false);
+
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const driftX = useTransform(mouseX, [0, window.innerWidth], [-10, 10]);
+  const driftY = useTransform(mouseY, [0, window.innerHeight], [-10, 10]);
 
   useEffect(() => {
     if (show && popupRef.current) {
@@ -60,6 +63,15 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
         break;
       case "Flicker":
         setFlickerActive(true);
+        break;
+      case "Blurry":
+        setBlurryActive(true);
+        break;
+      case "BackwardText":
+        setBackwardTextActive(true);
+        break;
+      case "MouseDrift":
+        setMouseDriftActive(true);
         break;
       default:
         setSabotage(sabotageName);
@@ -209,15 +221,45 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
     return () => clearInterval(interval);
   }, [codeRainActive]);
 
+  useEffect(() => {
+    if (!mouseDriftActive) return;
+    function handleMouseMove(event) {
+      mouseX.set(event.clientX);
+      mouseY.set(event.clientY);
+    }
 
+    if (show) {
+      window.addEventListener("mousemove", handleMouseMove);
+    }
 
-  if (!show) return null;
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [show, mouseX, mouseY]);
+
+  if (!show) {
+    setBackwardTextActive(false);
+    setMouseDriftActive(false); 
+    setFlickerActive(false);
+    setBlurryActive(false);
+    setBugSwarmActive(false);
+    setBuglampActive(false);
+    setBugEatActive(false);
+    setFakePopupActive(false);
+    setCodeRainActive(false);
+    return null;
+  };
 
   return (
-    <div alt="popup" className={`${sabotage} fixed inset-0 bg-black/90 flex justify-center items-center z-50 `}
+    <motion.div alt="popup" className={`${sabotage} fixed inset-0 bg-black/90 flex justify-center items-center z-50 ${blurryActive ? 'blur-xs' : ''}`}
       style={{
+        x: driftX,
+        y: driftY,
         filter: `brightness(${Math.max(1 - bugsFinished * 0.05, 0.03)})`,
       }}
+
+      animate={flickerActive ? { filter: ['brightness(1)', 'brightness(0.2)', 'brightness(2)'] } : { filter: 'brightness(1)' }}
+      transition={flickerActive ? { duration: 0.5, repeat: Infinity, time: [0, 0.8, 1] } : { duration: 0 }}
     >
       <div
         ref={popupRef}
@@ -234,11 +276,18 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
         <motion.button
           className="absolute -top-10 right-4 !border-none !outline-none !bg-transparent text-black text-3xl !p-0"
           whileHover={{ scale: 0.9 }}
-
+          onClick={onClose}
         >
           &times;
         </motion.button>
-        {children}
+        <motion.div
+          style={backwardTextActive ? {
+            direction: 'rtl',
+            unicodeBidi: 'bidi-override',
+          } : {}}
+        >
+          {children}
+        </motion.div>
       </div>
 
       {bugSwarmActive && bugs.map((bug) => (
@@ -316,7 +365,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
           {rain.text}
         </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 };
 
