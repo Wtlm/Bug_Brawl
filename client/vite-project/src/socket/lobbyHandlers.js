@@ -85,7 +85,8 @@ export class LobbyHandlers {
 
     handleStartGame = () => {
         this.sendPayload({
-            action: "start_game"
+            action: "start_game",
+            room: this.states.roomCode.trim()
         });
     };
 
@@ -181,7 +182,7 @@ export class LobbyHandlers {
             case "room_created":
                 this.setters.setIsHost(true);
                 this.setters.setIsNewHost(false);
-                this.setters.setRoomCode(data.roomCode);
+                this.setters.setRoomCode(data.room);
                 this.setters.setPlayerCount(1);
                 break;
             case "joined":

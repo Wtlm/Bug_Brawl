@@ -190,7 +190,7 @@ export default function Lobby() {
             <p className="text-lg">Waiting for host to start the game...</p>
             <p className="text-lg">Players: {playerCount}/4</p>
             <motion.button
-              className="!text-black w-1/3 !px-4 !py-2 !text-base !bottom-1"
+              className="!text-black w-2/3 !px-4 !py-2 !text-base !bottom-1"
               whileHover={{ scale: 0.9 }}
               onClick={handlers.handleClosePopup}
             >
@@ -245,7 +245,7 @@ export default function Lobby() {
         {countdown !== null && (
           <div className="text-center mt-4">
             <p className="text-xl font-bold text-green-500">
-              Starting in {countdown}...
+              
             </p>
           </div>
         )}

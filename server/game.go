@@ -5,8 +5,8 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"time"
 	"slices"
+	"time"
 )
 
 // LoadQuestions reads quiz.json and populates the questions slice
@@ -200,9 +200,9 @@ func RandomSabotage(losers []*PlayerAnswer, room *Room) {
 
 		loser.Client.conn.WriteJSON(map[string]interface{}{
 			"type":     "sabotage_applied",
-			"sabotage":  chosen.Name,
-			"usedBy":    "system",
-			"targets": loser.Client.name,
+			"sabotage": chosen.Name,
+			"usedBy":   "system",
+			"targets":  loser.Client.name,
 		})
 	}
 }
@@ -223,7 +223,7 @@ func (room *Room) StartQuestion() {
 
 	// Collect sabotage effects per player
 	playerEffects := make(map[string][]string)
-	for client := range room.Players {
+	for _, client := range room.Players {
 		var effects []string
 		for _, sabotage := range room.PlayerEffects[client.id] {
 			if sabotage.Used && sabotage.TargetID == client.id {
@@ -234,7 +234,7 @@ func (room *Room) StartQuestion() {
 	}
 
 	// Broadcast question to all players with their effects
-	for client := range room.Players {
+	for _, client := range room.Players {
 		err := client.conn.WriteJSON(map[string]interface{}{
 			"type":    "question",
 			"id":      question.ID,
@@ -247,4 +247,3 @@ func (room *Room) StartQuestion() {
 		}
 	}
 }
-
