@@ -56,7 +56,7 @@ func addToMatchQueue(client *Client) {
 	matchQueue = append(matchQueue, client)
 	log.Printf("Added %s to match queue. Queue length: %d\n", client.name, len(matchQueue))
 
-	limit := 2
+	limit := 1
 
 	log.Printf("Current match queue: %v\n", func() []string {
 		names := []string{}
@@ -304,12 +304,15 @@ func startGame(room *Room) {
 	}
 	for _, c := range room.Players {
 		c.conn.WriteJSON(map[string]interface{}{
-			"type":    "start",
-			"players": players,
+			"type":     "start",
+			"players":  players,
 			"roomCode": room.RoomCode,
 		})
 	}
 	log.Printf("Game started in room %v\n", room)
-
+	sleep(5 * time.Second)
 	room.StartQuestion()
+}
+func sleep(duration time.Duration) {
+	time.Sleep(duration)
 }

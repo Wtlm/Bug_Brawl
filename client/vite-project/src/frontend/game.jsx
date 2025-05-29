@@ -3,7 +3,7 @@ import PlayCard from "./playcard";
 import Popup from "../widget/popup";
 import Questions from "../assets/quiz.json"
 import { useLocation } from "react-router-dom";
-import { getSocket } from "../socket/socket.js";
+import { getSocket, setMessageHandler } from "../socket/socket.js";
 import { GameHandler } from "../socket/gameHandlers.js";
 import { useNavigate } from 'react-router-dom';
 
@@ -29,7 +29,7 @@ export default function Game() {
     const [playerEffects, setPlayerEffects] = useState({});
     const currentPlayerId = location.state?.playerId;
     const currentEffects = playerEffects[currentPlayerId] || [];
-    const sabotageName = currentEffects.length > 0 ? currentEffects[0] : "";
+    const [currentSabotage, setCurrentSabotage] = useState("");
     const [roundResultNoti, setRoundResultNoti] = useState(null);
     const navigate = useNavigate();
 
@@ -39,8 +39,15 @@ export default function Game() {
     useEffect(() => {
         console.log("Game component mounted");
         const socket = getSocket();
-        // console.log("Game component mounted with roomId:", roomId);
-        // console.log("players:", players);
+        setMessageHandler((message) => {
+            const handler = gameHandler.current?.messageHandlers[message.type];
+            if (handler) {
+                handler(message);
+            } else {
+                console.warn("Unhandled message type:", message.type);
+            }
+        });
+
         gameHandler.current = new GameHandler(socket, roomId, {
             setPlayers,
             setQuestion,
@@ -54,7 +61,12 @@ export default function Game() {
             setChooseSabotage,
             setCodeRainActive,
             setSabotageNoti,
-            setPlayerEffects,
+            setPlayerEffects: (effects) => {
+                setPlayerEffects(effects);
+                // Update current sabotage when effects change
+                const playerEffect = effects[currentPlayerId]?.[0];
+                setCurrentSabotage(playerEffect || "BugLamp");
+            },
             setRoundResultNoti,
             onGameOver: () => {
                 console.log("Game Over!");
@@ -129,24 +141,36 @@ export default function Game() {
                     borderColor={["blue", "red", "green", "yellow"][idx % 4]}
                 />
             ))}
-            <Popup className="w-3/5 h-5/6" show={showPopup} onClose={handleClosePopup} sabotageName={sabotageName}>
+            <Popup className="w-3/5 h-5/6" show={showPopup} onClose={handleClosePopup} sabotageName={currentSabotage}>
                 {question && (
-                    <div className={` p-6 text-left  ${isScrambled ? 'text-green-500' : 'text-white'}`}>
-                        <h2 className="lg:text-2xl text-sm font-bold mb-5 "> {isScrambled ? scrambledQuestion : question.question}</h2>
-                        <ul className=" grid grid-cols-2 grid-rows-2 gap-5">
-                            {(isScrambled ? scrambledOptions : question.options.map(o => o.text)).map((text, idx) => (
-                                <li
-                                    key={question.options[idx].id}
-                                    className={`${isScrambled ? 'bg-black' : 'bg-[#9f9f9f]'} ${isScrambled ? 'text-green-400' : 'text-black'} px-4 py-1 rounded-xl font-medium lg:text-xl text-xs content-center leading-tight`}
-                                    onClick={() => {
-                                        gameHandler.current.sendAnswer(question.options[idx].id);
-                                    }}
-                                >
-                                    {/* <span className="mr-2">{option.id.toUpperCase()}.</span> */}
-                                    {text}
-                                </li>
-                            ))}
-                        </ul>
+                    <div className={`flex flex-col h-full p-6`}>
+                        {/* Question section */}
+                        <div className={`mb-8 ${isScrambled ? 'text-green-500' : 'text-white'}`}>
+                            <h2 className="lg:text-2xl text-sm font-bold">
+                                {isScrambled ? scrambledQuestion : question.question}
+                            </h2>
+                        </div>
+
+                        {/* Options section */}
+                        <div className="flex-grow">
+                            <ul className="grid grid-cols-2 grid-rows-2 gap-5">
+                                {(isScrambled ? scrambledOptions : question.options.map(o => o.text)).map((text, idx) => (
+                                    <li
+                                        key={question.options[idx].id}
+                                        className={`${isScrambled ? 'bg-black' : 'bg-[#9f9f9f]'} 
+                                                  ${isScrambled ? 'text-green-400' : 'text-black'} 
+                                                  px-4 py-3 rounded-xl font-medium lg:text-xl text-xs 
+                                                  cursor-pointer hover:opacity-90 transition-opacity
+                                                  flex items-center justify-center text-center`}
+                                        onClick={() => {
+                                            gameHandler.current.sendAnswer(question.options[idx].id);
+                                        }}
+                                    >
+                                        {text}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     </div>
                 )}
             </Popup>

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, memo } from 'react';
 import { useNavigate } from "react-router-dom";
 import { delay, motion } from "framer-motion";
-import { getSocket } from "../socket/socket.js";
+import { getSocket, setMessageHandler } from "../socket/socket.js";
 import Popup from "../widget/popup";
 import { LobbyHandlers } from '../socket/lobbyHandlers.js';
 
@@ -62,10 +62,16 @@ function Lobby() {
   useEffect(() => {
     // Create WebSocket once on component mount
     if (!socketRef.current) {
-      handlers.getOrCreateSocket();
+      socketRef.current = getSocket();
+    
+    // Set up message handler for lobby
+    setMessageHandler((data) => {
+      handlers.handleSocketMessage(data);
+    });
     }
     // Clean up WebSocket connection on component unmount
     return () => {
+      
     };
   }, []);
 

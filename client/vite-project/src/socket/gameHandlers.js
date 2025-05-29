@@ -29,29 +29,29 @@ export class GameHandler {
             game_over: this.handleGameOver.bind(this),
         };
 
-        this.init();
+        // this.init();
     }
 
-    init() {
-        this.socket.onopen = () => {
-            console.log("Game socket open. Joining room:", this.roomId);
-            if (this.roomId) {
-                this.socket.send(JSON.stringify({ type: "join_game", roomId: this.roomId }));
-            }
-        };
+    // init() {
+    //     this.socket.onopen = () => {
+    //         console.log("Game socket open. Joining room:", this.roomId);
+    //         if (this.roomId) {
+    //             this.socket.send(JSON.stringify({ type: "join_game", roomId: this.roomId }));
+    //         }
+    //     };
 
-        this.socket.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
-            console.log("Game socket message:", msg);
+    //     this.socket.onmessage = (event) => {
+    //         const msg = JSON.parse(event.data);
+    //         console.log("Game socket message:", msg);
 
-            const handler = this.messageHandlers[msg.type];
-            if (handler) {
-                handler(msg);
-            } else {
-                console.warn("Unhandled message type:", msg.type);
-            }
-        };
-    }
+    //         const handler = this.messageHandlers[msg.type];
+    //         if (handler) {
+    //             handler(msg);
+    //         } else {
+    //             console.warn("Unhandled message type:", msg.type);
+    //         }
+    //     };
+    // }
 
     handlePlayerList(msg) {
         this.setPlayers(msg.players);
@@ -63,15 +63,16 @@ export class GameHandler {
             question: msg.text,
             options: msg.options,
         };
-        const effects = msg.effect || [];
 
         this.setQuestion(question);
-        this.setPlayerEffects(effects);
         this.setShowPopup(true);
 
-        if (effects.includes("CodeRain")) {
-            this.setCodeRainActive(true);
-        }
+        // Set default effect if none provided
+        const effects = msg.effect || ["BugLamp"];
+        this.setPlayerEffects(prevEffects => ({
+            ...prevEffects,
+            [this.roomId]: effects
+        }));
 
         const questionTime = effects.includes("BugEat") ? 20 : 30;
         this.startTimer(questionTime);

@@ -23,7 +23,7 @@ type Option struct {
 
 type Question struct {
 	ID      int   `json:"id"`
-	Text    string   `json:"text"`
+	Text    string   `json:"question"`
 	Options []Option `json:"options"`
 	Answer  string   `json:"answer"`
 }

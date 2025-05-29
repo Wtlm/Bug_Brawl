@@ -1,4 +1,4 @@
-import { getSocket } from "./socket.js";
+import { getSocket, setMessageHandler } from "./socket.js";
 
 export class LobbyHandlers {
     constructor(states, setters, socketRef, navigate) {
