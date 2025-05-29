@@ -110,6 +110,7 @@ func handleFindMatch(client *Client, conn *websocket.Conn) {
 }
 
 func handleStartGame(client *Client, conn *websocket.Conn) {
+
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
 

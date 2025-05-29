@@ -3,7 +3,7 @@ import { getSocket } from "./socket.js";
 
 export class GameHandler {
     constructor(socket, roomId, callbacks) {
-        this.socket = getSocket();
+        this.socket = socket;
         this.roomId = roomId;
         this.setPlayers = callbacks.setPlayers;
         this.setQuestion = callbacks.setQuestion;
@@ -160,7 +160,6 @@ export class GameHandler {
         const { note } = msg;
         this.setRoundResultNoti?.(note);
 
-        // Navigate or trigger the callback after a short delay if needed
         setTimeout(() => {
             this.setRoundResultNoti?.(null);
             this.setShowPopup(false);

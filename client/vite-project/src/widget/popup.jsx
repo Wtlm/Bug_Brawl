@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { motion, useMotionValue, useTransform, time } from "framer-motion";
 import { animate, eases } from 'animejs';
 import bug2Gif from "../assets/image/bug2.gif";
 import Bulb from "../assets/image/bulb.png";
 
 function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
+  console.log("Popup rendered with sabotageName:", sabotageName);
   const width = window.innerWidth;
   const height = window.innerHeight;
   const popupRef = useRef(null);
@@ -236,19 +237,22 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [show, mouseX, mouseY]);
+  
+  useEffect(() => {
+    if (!show) {
+      setBackwardTextActive(false);
+      setMouseDriftActive(false);
+      setFlickerActive(false);
+      setBlurryActive(false);
+      setBugSwarmActive(false);
+      setBuglampActive(false);
+      setBugEatActive(false);
+      setFakePopupActive(false);
+      setCodeRainActive(false);
+    }
+  }, [show]);
 
-  if (!show) {
-    setBackwardTextActive(false);
-    setMouseDriftActive(false); 
-    setFlickerActive(false);
-    setBlurryActive(false);
-    setBugSwarmActive(false);
-    setBuglampActive(false);
-    setBugEatActive(false);
-    setFakePopupActive(false);
-    setCodeRainActive(false);
-    return null;
-  };
+  if (!show) return null;
 
   return (
     <motion.div alt="popup" className={`${sabotage} fixed inset-0 bg-black/90 flex justify-center items-center z-50 ${blurryActive ? 'blur-xs' : ''}`}
@@ -369,4 +373,4 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
   );
 };
 
-export default Popup;
+export default memo(Popup);

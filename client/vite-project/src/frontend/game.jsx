@@ -5,10 +5,14 @@ import Questions from "../assets/quiz.json"
 import { useLocation } from "react-router-dom";
 import { getSocket } from "../socket/socket.js";
 import { GameHandler } from "../socket/gameHandlers.js";
+import { useNavigate } from 'react-router-dom';
 
 
 
 export default function Game() {
+    const location = useLocation();
+
+    console.log("Game component mounted:", location.state?.roomId);
     const [showPopup, setShowPopup] = useState(false);
     const [question, setQuestion] = useState(null);
     const [isScrambled, setIsScrambled] = useState(false);
@@ -16,7 +20,6 @@ export default function Game() {
     const [scrambledOptions, setScrambledOptions] = useState([]);
     const [codeRainActive, setCodeRainActive] = useState(false);
     const gameHandler = useRef(null);
-    const location = useLocation();
     const [players, setPlayers] = useState(location.state?.players || []);
     const [roomId, setRoomId] = useState(location.state?.roomId || null);
     const [timeLeft, setTimeLeft] = useState(30);
@@ -28,10 +31,16 @@ export default function Game() {
     const currentEffects = playerEffects[currentPlayerId] || [];
     const sabotageName = currentEffects.length > 0 ? currentEffects[0] : "";
     const [roundResultNoti, setRoundResultNoti] = useState(null);
+    const navigate = useNavigate();
+
+    // const [onGameOver, setOnGameOver] = useState(null);
 
 
     useEffect(() => {
+        console.log("Game component mounted");
         const socket = getSocket();
+        // console.log("Game component mounted with roomId:", roomId);
+        // console.log("players:", players);
         gameHandler.current = new GameHandler(socket, roomId, {
             setPlayers,
             setQuestion,
@@ -47,12 +56,16 @@ export default function Game() {
             setSabotageNoti,
             setPlayerEffects,
             setRoundResultNoti,
+            onGameOver: () => {
+                console.log("Game Over!");
+                navigate("/gameover");
+            }
         });
 
         // Cleanup if needed
         return () => {
             gameHandler.current?.clearTimer?.();
-            // socket.close();
+            socket.close();
         };
     }, [roomId]);
 

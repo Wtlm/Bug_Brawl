@@ -306,6 +306,7 @@ func startGame(room *Room) {
 		c.conn.WriteJSON(map[string]interface{}{
 			"type":    "start",
 			"players": players,
+			"roomCode": room.RoomCode,
 		})
 	}
 	log.Printf("Game started in room %v\n", room)

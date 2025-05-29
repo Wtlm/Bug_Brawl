@@ -1,11 +1,13 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, memo } from 'react';
 import { useNavigate } from "react-router-dom";
 import { delay, motion } from "framer-motion";
 import { getSocket } from "../socket/socket.js";
 import Popup from "../widget/popup";
 import { LobbyHandlers } from '../socket/lobbyHandlers.js';
 
-export default function Lobby() {
+function Lobby() {
+      console.log("Lobby component mounted");
+
   const buttonLabels = ["Create Match", "Join Match", "Find Match"];
   const [selectedLabel, setSelectedLabel] = useState('');
   const [showPopup, setShowPopup] = useState(false);
@@ -253,3 +255,5 @@ export default function Lobby() {
     </div>
   );
 }
+
+export default memo(Lobby)

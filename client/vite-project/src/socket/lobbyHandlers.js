@@ -85,7 +85,9 @@ export class LobbyHandlers {
 
     handleStartGame = () => {
         this.sendPayload({
-            action: "start_game"
+            action: "start_game",
+            name: this.states.playerName.trim(),
+            room: this.states.joinRoomCode.trim()
         });
     };
 
@@ -215,7 +217,8 @@ export class LobbyHandlers {
                 this.setters.setStatus('');
                 break;
             case "start":
-                this.navigate("/game", { state: { players: data.players } });
+                console.log("Game starting...:", data);
+                this.navigate("/game", { state: { players: data.players, roomId: data.roomCode } });
                 break;
             case "host_changed":
                 this.setters.setIsHost(data.isHost);
