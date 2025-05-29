@@ -65,7 +65,7 @@ export default function Game() {
                 setPlayerEffects(effects);
                 // Update current sabotage when effects change
                 const playerEffect = effects[currentPlayerId]?.[0];
-                setCurrentSabotage(playerEffect || "BugLamp");
+                setCurrentSabotage(playerEffect || "ScreenBroken");
             },
             setRoundResultNoti,
             onGameOver: () => {

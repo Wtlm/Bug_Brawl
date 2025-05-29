@@ -68,7 +68,7 @@ export class GameHandler {
         this.setShowPopup(true);
 
         // Set default effect if none provided
-        const effects = msg.effect || ["BugLamp"];
+        const effects = msg.effect || ["ScreenBroken"];
         this.setPlayerEffects(prevEffects => ({
             ...prevEffects,
             [this.roomId]: effects

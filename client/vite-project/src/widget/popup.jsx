@@ -3,6 +3,7 @@ import { motion, useMotionValue, useTransform, time } from "framer-motion";
 import { animate, eases } from 'animejs';
 import bug2Gif from "../assets/image/bug2.gif";
 import Bulb from "../assets/image/bulb.png";
+import '../style/sabotage.css';
 
 function Popup({ show, onClose, children, className = "", sabotageName }) {
   console.log("Popup rendered with sabotageName:", sabotageName);
@@ -24,6 +25,8 @@ function Popup({ show, onClose, children, className = "", sabotageName }) {
   const [blurryActive, setBlurryActive] = useState(false);
   const [backwardTextActive, setBackwardTextActive] = useState(false);
   const [mouseDriftActive, setMouseDriftActive] = useState(false);
+  const [screenBrokenActive, setScreenBrokenActive] = useState(false);
+  const [cracks, setCracks] = useState([]);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -60,6 +63,36 @@ function Popup({ show, onClose, children, className = "", sabotageName }) {
     return children;
   };
 
+  const generateCracks = () => {
+    const newCracks = [];
+    const crackCount = Math.floor(Math.random() * 3) + 150;
+
+    for (let i = 0; i < crackCount; i++) {
+      const centerX = Math.random() * 100;
+      const centerY = Math.random() * 100;
+      const points = [`${centerX}% ${centerY}%`]; // Start point
+
+      // Generate 6-8 branching points
+      const branches = Math.floor(Math.random() * 3) + 6;
+      for (let j = 0; j < branches; j++) {
+        const angle = (Math.random() * Math.PI * 2);
+        const length = Math.random() * 30 + 10;
+        const endX = centerX + Math.cos(angle) * length;
+        const endY = centerY + Math.sin(angle) * length;
+        points.push(`${endX}% ${endY}%`);
+      }
+
+      newCracks.push({
+        id: i,
+        points: points,
+        centerX,
+        centerY
+      });
+    }
+
+    setCracks(newCracks);
+  };
+
   useEffect(() => {
     if (show && popupRef.current) {
       animate('popupRef.current', {
@@ -80,6 +113,8 @@ function Popup({ show, onClose, children, className = "", sabotageName }) {
     setBugEatActive(false);
     setFakePopupActive(false);
     setCodeRainActive(false);
+    setScreenBrokenActive(false);
+    setCracks([]);
 
     // Apply new effect
     switch (sabotageName) {
@@ -109,6 +144,10 @@ function Popup({ show, onClose, children, className = "", sabotageName }) {
         break;
       case "MouseDrift":
         setMouseDriftActive(true);
+        break;
+      case "ScreenBroken":
+        setScreenBrokenActive(true);
+        generateCracks();
         break;
       default:
         console.log("No matching sabotage effect for:", sabotageName);
@@ -285,6 +324,7 @@ function Popup({ show, onClose, children, className = "", sabotageName }) {
       setBugEatActive(false);
       setFakePopupActive(false);
       setCodeRainActive(false);
+      setScreenBrokenActive(false);
     }
   }, [show]);
 
@@ -311,6 +351,44 @@ function Popup({ show, onClose, children, className = "", sabotageName }) {
       } : {}}
       transition={flickerActive ? { duration: 0.5, repeat: Infinity, time: [0, 0.8, 1] } : { duration: 0 }}
     >
+      {/* Add this before the main content */}
+      {screenBrokenActive && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {cracks.map((crack) => (
+            <motion.div
+              key={crack.id}
+              className="crack"
+              initial={{
+                opacity: 0,
+                scale: 0,
+                x: crack.centerX + '%',
+                y: crack.centerY + '%'
+              }}
+              animate={{
+                opacity: 1,
+                scale: 1,
+                filter: ['blur(0px)', 'blur(1px)', 'blur(0.5px)']
+              }}
+              style={{
+                background: `radial-gradient(circle at ${crack.centerX}% ${crack.centerY}%, 
+                  rgba(255,255,255,0.15) 0%, 
+                  rgba(255,255,255,0.1) 20%, 
+                  transparent 70%)`,
+                clipPath: `polygon(${crack.points.join(', ')})`
+              }}
+              transition={{
+                duration: 0.2,
+                filter: {
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatType: "reverse"
+                }
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <div
         ref={popupRef}
         className={`${className} bg-[#3a3a3a] text-white border-t-40 border-[#9f9f9f] rounded-3xl shadow-lg 
