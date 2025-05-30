@@ -88,7 +88,7 @@ export default function Game() {
             setCodeRainActive(false);
         }
 
-        const questionTime = currentEffects.includes("BugEat") ? 20 : 5;
+        const questionTime = currentEffects.includes("BugEat") ? 20 : 30;
         gameHandler.current.startTimer(questionTime);
     }, [currentEffects]);
 
@@ -179,8 +179,36 @@ export default function Game() {
         }
     }, [currentEffects]);
 
-    return (
+    // Add useEffect for handling sabotage effects
+    useEffect(() => {
+        if (!question || !showPopup) return;
+        
+        // Clear any existing effects first
+        setCodeRainActive(false);
+        setIsScrambled(false);
+        
+        // Check if player has any active effects
+        if (currentEffects && currentEffects.length > 0) {
+            // Ensure DOM elements exist before applying effects
+            const questionElement = document.querySelector('.question-container');
+            if (!questionElement) return;
 
+            currentEffects.forEach(effect => {
+                switch(effect) {
+                    case 'CodeRain':
+                        setCodeRainActive(true);
+                        break;
+                    case 'Scramble':
+                        setIsScrambled(true);
+                        break;
+                    // Add other effect cases as needed
+                }
+            });
+        }
+    }, [question, showPopup, currentEffects]);
+
+    // Update the question render to include required container
+    return (
         <div className="h-screen bg-black grid grid-cols-2 grid-rows-2 justify-center items-center gap-3 p-3">
 
             {players.map((player, idx) => (
@@ -194,8 +222,10 @@ export default function Game() {
             ))}
             <Popup className="w-3/5 h-5/6" show={showPopup} sabotageName={sabotageName}>
                 {question && (
-                    <div className={` p-6 text-left  ${isScrambled ? 'text-green-500' : 'text-white'}`}>
-                        <h2 className="lg:text-2xl text-sm font-bold mb-5 "> {isScrambled ? scrambledQuestion : question.question}</h2>
+                    <div className="question-container p-6 text-left">
+                        <h2 className={`lg:text-2xl text-sm font-bold mb-5 ${isScrambled ? 'text-green-500' : 'text-white'}`}>
+                            {isScrambled ? scrambledQuestion : question.question}
+                        </h2>
                         <ul className=" grid grid-cols-2 grid-rows-2 gap-5">
                             {(isScrambled ? scrambledOptions : question.options.map(o => o.text)).map((text, idx) => {
                                 const optionId = question.options[idx].id;

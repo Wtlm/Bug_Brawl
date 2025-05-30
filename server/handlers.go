@@ -84,7 +84,10 @@ func handleJoinRoom(client *Client, conn *websocket.Conn, msg Message) {
 	client.IsHost = false
 	client.Health = 5 // Reset health when joining a room
 	room.Players = append(room.Players, client)
-	room.PlayerEffects[client.ID] = GenerateInitialSabotageList()
+
+	// Fix: Initialize both available sabotages and effects
+	room.AvailableSabotages[client.ID] = GenerateInitialSabotageList()
+	room.PlayerEffects[client.ID] = []*Sabotage{} // Initialize empty effects
 
 	// roomsMutex.RLock()
 	// room := rooms[msg.Room]
@@ -208,7 +211,7 @@ func handleAnswer(client *Client, msg Message, conn *websocket.Conn) {
 	})
 
 	log.Printf("Player %s answered: %s (correct: %t)", client.Name, msg.Answer, correct)
-	answerTimeoutMs := int64(5000) // 30 seconds
+	answerTimeoutMs := int64(30000) // 30 seconds
 	now := time.Now().UnixMilli()
 
 	if now-room.QuestionStart > answerTimeoutMs || len(room.AnswerLog) == len(room.Players) {

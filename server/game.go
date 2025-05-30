@@ -147,11 +147,33 @@ func (room *Room) CalculateHealth(winner *PlayerAnswer, losers []*PlayerAnswer) 
 }
 
 func (room *Room) AssignSabotagesToLosers(result *RoundResult) {
-	if result == nil || len(result.Losers) == 0 {
-		return
-	}
+    if result == nil || len(result.Losers) == 0 {
+        log.Println("No losers to assign sabotages to")
+        room.StartQuestion() // Continue game if no sabotages to assign
+        return
+    }
 
-	if result.Winner != nil && result.Winner.Client != nil {
+    // Validate winner exists for manual sabotage selection
+    if result.Winner != nil && result.Winner.Client != nil {
+        validLosers := []*PlayerAnswer{}
+        
+        // Filter out invalid losers
+        for _, loser := range result.Losers {
+            if loser != nil && loser.Client != nil {
+                validLosers = append(validLosers, loser)
+            }
+        }
+
+        if len(validLosers) == 0 {
+            log.Println("No valid losers after filtering")
+            room.StartQuestion()
+            return
+        }
+
+        // Continue with valid losers
+        result.Losers = validLosers
+        
+
 		if result.Losers != nil {
 			for _, loser := range result.Losers {
 				if loser == nil || loser.Client == nil {

@@ -72,24 +72,26 @@ export class GameHandler {
 
     }
     handleNewQuestion(msg) {
-
         const question = {
             id: msg.id,
             question: msg.question,
             options: msg.options,
         };
-    const effects = msg.effect || {};
+
+        // Ensure effects are properly initialized
+        if (msg.effect && Array.isArray(msg.effect)) {
+            this.setPlayerEffects(prev => ({
+                ...prev,
+                [msg.playerId]: msg.effect
+            }));
+        }
 
         this.setQuestion(question);
-        this.setPlayerEffects(effects);
         this.setShowPopup(true);
 
-        // if (effects.includes("CodeRain")) {
-        //     this.setCodeRainActive(true);
-        // }
-
-        // const questionTime = effects.includes("BugEat") ? 20 : 5;
-        // this.startTimer(questionTime);
+        // Reset sabotage selection state
+        this.setChooseSabotage(null);
+        this.setSabotageNoti(null);
     }
 
     startTimer(seconds) {
@@ -135,11 +137,16 @@ export class GameHandler {
         setTimeout(() => this.setChooseSabotage?.(null), 3000);
     }
     sendSabotageChoice(sabotageName) {
-        const msg = {
-            action: "use_sabotage",
-            name: sabotageName,
-        };
-        this.socket.send(JSON.stringify(msg));
+        if (!sabotageName || !this.socket) return;
+
+        try {
+            this.socket.send(JSON.stringify({
+                action: "use_sabotage",
+                name: sabotageName
+            }));
+        } catch (error) {
+            console.error("Error sending sabotage choice:", error);
+        }
     }
     handleWaitForWinner(msg) {
         this.setWaitWinner(msg.winner);
@@ -165,10 +172,11 @@ export class GameHandler {
         let message = "";
         if (!winner) {
             message = "No correct answers this round.";
-        } else { message = `Fatest Correct Answer: \n ${winner} `; }
+        } else { message = `Fatest Correct Answer: \n\n${winner} \n`; }
+        // message += "\n";
 
         if (losers && losers.length > 0) {
-            message += `\nIncorrect Answer (-1 heart):\n ${losers.join(', ')}`;
+            message += `\n\nIncorrect Answer (-1 heart):\n\n ${losers.join(', ')}`;
         }
 
         // this.setShowPopup(true);

@@ -4,7 +4,7 @@ import { animate, eases } from 'animejs';
 import bug2Gif from "../assets/image/bug2.gif";
 import Bulb from "../assets/image/bulb.png";
 
-function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
+function Popup({ show, onClose, children, className = "", sabotageName }) {
   const width = window.innerWidth;
   const height = window.innerHeight;
   const popupRef = useRef(null);
@@ -29,6 +29,36 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
   const driftX = useTransform(mouseX, [0, window.innerWidth], [-10, 10]);
   const driftY = useTransform(mouseY, [0, window.innerHeight], [-10, 10]);
 
+  const ReverseText = ({ children }) => {
+    if (typeof children === 'string') {
+      return children.split('').reverse().join('');
+    }
+
+    if (React.isValidElement(children)) {
+      if (typeof children.props.children === 'string') {
+        return React.cloneElement(children, {
+          ...children.props,
+          children: children.props.children.split('').reverse().join('')
+        });
+      }
+
+      return React.cloneElement(children, {
+        ...children.props,
+        children: React.Children.map(children.props.children, child => (
+          <ReverseText>{child}</ReverseText>
+        ))
+      });
+    }
+
+    if (Array.isArray(children)) {
+      return children.map((child, index) => (
+        <ReverseText key={index}>{child}</ReverseText>
+      ));
+    }
+
+    return children;
+  };
+
   useEffect(() => {
     if (show && popupRef.current) {
       animate('popupRef.current', {
@@ -47,19 +77,19 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
         break;
       case "BugLamp":
         setBuglampActive(true);
-        setSabotage("");
+        // setSabotage("");
         break;
       case "BugEat":
         setBugEatActive(true);
-        setSabotage("");
+        // setSabotage("");
         break;
       case "FakePopup":
         setFakePopupActive(true);
-        setSabotage("");
+        // setSabotage("");
         break;
       case "CodeRain":
         setCodeRainActive(true);
-        setSabotage("");
+        // setSabotage("");
         break;
       case "Flicker":
         setFlickerActive(true);
@@ -76,7 +106,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
       default:
         setSabotage(sabotageName);
     }
-  }, [sabotageName]);
+  }, [sabotageName, show]);
 
   useEffect(() => {
     if (!bugSwarmActive) {
@@ -236,7 +266,7 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [show, mouseX, mouseY]);
-  
+
   useEffect(() => {
     if (!show) {
       setBackwardTextActive(false);
@@ -254,15 +284,25 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
   if (!show) return null;
 
   return (
-    <motion.div alt="popup" className={`${sabotage} fixed inset-0 bg-black/90 flex justify-center items-center z-50 ${blurryActive ? 'blur-xs' : ''}`}
+    <motion.div alt="popup" className={`${sabotage} fixed inset-0 bg-black/90 flex justify-center items-center z-50`}
       style={{
         x: driftX,
         y: driftY,
-        filter: `brightness(${Math.max(1 - bugsFinished * 0.05, 0.03)})`,
+        filter: `${blurryActive ? 'blur(3px)' : ''} 
+        ${bugLampActive ? `brightness(${Math.max(1 - (bugsFinished * 0.05), 0.2)})` :
+            flickerActive ? 'brightness(1)' : 'brightness(1)'
+          }`,
       }}
 
-      animate={flickerActive ? { filter: ['brightness(1)', 'brightness(0.2)', 'brightness(2)'] } : { filter: 'brightness(1)' }}
-      transition={flickerActive ? { duration: 0.5, repeat: Infinity, time: [0, 0.8, 1] } : { duration: 0 }}
+      animate={flickerActive ? {
+        filter: [
+          'brightness(1)',
+          'brightness(0.2)',
+          'brightness(1.5)',
+          'brightness(0.2)',
+          'brightness(1)'
+        ]
+      } : {}} transition={flickerActive ? { duration: 0.5, repeat: Infinity, time: [0, 0.8, 1] } : { duration: 0 }}
     >
       <div
         ref={popupRef}
@@ -283,13 +323,14 @@ function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
         >
           &times;
         </motion.button>
-        <motion.div
-          style={backwardTextActive ? {
-            direction: 'rtl',
-            unicodeBidi: 'bidi-override',
-          } : {}}
-        >
-          {children}
+        <motion.div className="relative w-full">
+          {backwardTextActive ? (
+            <div style={{ direction: 'rtl', unicodeBidi: 'bidi-override' }}>
+              <ReverseText>{children}</ReverseText>
+            </div>
+          ) : (
+            children
+          )}
         </motion.div>
       </div>
 
