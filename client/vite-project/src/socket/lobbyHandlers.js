@@ -1,4 +1,6 @@
 import { getSocket } from "./socket.js";
+import { useSocket } from "../socket/socketContext.jsx";
+import { use } from "react";
 
 export class LobbyHandlers {
     constructor(states, setters, socketRef, navigate) {
@@ -9,20 +11,20 @@ export class LobbyHandlers {
     }
 
     sendPayload = (payload) => {
-        if (!this.socketRef.current) {
+        if (!this.socketRef) {
             this.getOrCreateSocket();
         }
 
-        if (!this.socketRef.current) {
+        if (!this.socketRef) {
             alert("WebSocket is not connected.");
             return;
         }
 
-        if (this.socketRef.current.readyState === WebSocket.OPEN) {
-            this.socketRef.current.send(JSON.stringify(payload));
-        } else if (this.socketRef.current.readyState === WebSocket.CONNECTING) {
-            this.socketRef.current.onopen = () => {
-                this.socketRef.current.send(JSON.stringify(payload));
+        if (this.socketRef.readyState === WebSocket.OPEN) {
+            this.socketRef.send(JSON.stringify(payload));
+        } else if (this.socketRef.readyState === WebSocket.CONNECTING) {
+            this.socketRef.onopen = () => {
+                this.socketRef.send(JSON.stringify(payload));
             };
         } else {
             alert("WebSocket connection is not ready. Please refresh the page.");
@@ -143,19 +145,20 @@ export class LobbyHandlers {
     };
 
     getOrCreateSocket = () => {
-        this.socketRef.current = getSocket();
+        // const context = useSocket();
+        // this.socketRef = context;
 
-        this.socketRef.current.onopen = () => {
+        this.socketRef.onopen = () => {
             console.log("WebSocket connected");
         };
 
-        this.socketRef.current.onmessage = (event) => {
+        this.socketRef.onmessage = (event) => {
             console.log("Received message:", event.data);
             try {
                 const data = JSON.parse(event.data);
                 if (data.error) {
                     alert(data.error);
-                    if (this.socketRef.current) this.socketRef.current.close();
+                    if (this.socketRef) this.socketRef.close();
                     this.setters.setShowPopup(false);
                     return;
                 }
@@ -166,15 +169,15 @@ export class LobbyHandlers {
             }
         };
 
-        this.socketRef.current.onerror = (error) => {
+        this.socketRef.onerror = (error) => {
             console.error("WebSocket error:", error);
             alert("Connection error. Please try again.");
             this.setters.setShowPopup(false);
         };
 
-        this.socketRef.current.onclose = (event) => {
+        this.socketRef.onclose = (event) => {
             console.log("WebSocket closed:", event.code, event.reason);
-            this.socketRef.current = null;
+            this.socketRef = null;
         };
     };
 
@@ -218,7 +221,7 @@ export class LobbyHandlers {
                 break;
             case "start":
                 console.log("Game starting...:", data);
-                this.navigate("/game", { state: { players: data.players, roomId: data.roomCode } });
+                this.navigate("/game", { state: { players: data.players, roomId: data.roomCode, playerName : this.states.playerName.trim()} });
                 break;
             case "host_changed":
                 this.setters.setIsHost(data.isHost);

@@ -10,20 +10,23 @@ import Home from './frontend/home.jsx'
 import Lobby from './frontend/lobby.jsx';
 import Game from './frontend/game.jsx';
 import GameOver from './frontend/gameover.jsx';
+import { SocketProvider } from './socket/socketContext.jsx';
 
 
 
 function App() {
-  const location = useLocation(); 
+  const location = useLocation();
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Home />} />
-        <Route path="/lobby" element={<Lobby />} />
-        <Route path="/game" element={<Game />} />
-        <Route path="/gameover" element={<GameOver />} />
-      </Routes>
-    </AnimatePresence>
+    <SocketProvider>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Home />} />
+          <Route path="/lobby" element={<Lobby />} />
+          <Route path="/game" element={<Game />} />
+          <Route path="/gameover" element={<GameOver />} />
+        </Routes>
+      </AnimatePresence>
+    </SocketProvider>
   )
 }
 

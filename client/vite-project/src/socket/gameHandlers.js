@@ -17,13 +17,18 @@ export class GameHandler {
         this.setCodeRainActive = callbacks.setCodeRainActive;
         this.setRoundResultNoti = callbacks.setRoundResultNoti;
         this.onGameOver = callbacks.onGameOver;
+        this.setWaitWinner = callbacks.setWaitWinner;
+        // this.sendSabotageChoice = callbacks.sendSabotageChoice;
+        // this.sendSabotageChoice = this.sendSabotageChoice.bind(this);
         this.timer = null;
 
         this.messageHandlers = {
             player_info: this.handlePlayerList.bind(this),
+            player_update: this.handlePlayerUpdate.bind(this),
             question: this.handleNewQuestion.bind(this),
             // update_health: this.handleUpdateHealth.bind(this),
             choose_sabotage: this.handleChooseSabotage.bind(this),
+            wait_winner: this.handleWaitForWinner.bind(this),
             sabotage_applied: this.handleSabotageNoti.bind(this),
             round_result: this.handleRoundResult.bind(this),
             game_over: this.handleGameOver.bind(this),
@@ -39,7 +44,12 @@ export class GameHandler {
                 this.socket.send(JSON.stringify({ type: "join_game", roomId: this.roomId }));
             }
         };
-
+        if (this.socket.readyState === WebSocket.OPEN) {
+            console.log("Socket already open. Joining room immediately:", this.roomId);
+            if (this.roomId) {
+                this.socket.send(JSON.stringify({ type: "join_game", roomId: this.roomId }));
+            }
+        }
         this.socket.onmessage = (event) => {
             const msg = JSON.parse(event.data);
             console.log("Game socket message:", msg);
@@ -57,24 +67,29 @@ export class GameHandler {
         this.setPlayers(msg.players);
     }
 
+    handlePlayerUpdate(msg) {
+        this.setPlayers(msg.players);
+
+    }
     handleNewQuestion(msg) {
+
         const question = {
             id: msg.id,
-            question: msg.text,
+            question: msg.question,
             options: msg.options,
         };
-        const effects = msg.effect || [];
+    const effects = msg.effect || {};
 
         this.setQuestion(question);
         this.setPlayerEffects(effects);
         this.setShowPopup(true);
 
-        if (effects.includes("CodeRain")) {
-            this.setCodeRainActive(true);
-        }
+        // if (effects.includes("CodeRain")) {
+        //     this.setCodeRainActive(true);
+        // }
 
-        const questionTime = effects.includes("BugEat") ? 20 : 30;
-        this.startTimer(questionTime);
+        // const questionTime = effects.includes("BugEat") ? 20 : 5;
+        // this.startTimer(questionTime);
     }
 
     startTimer(seconds) {
@@ -104,7 +119,7 @@ export class GameHandler {
         const answerTime = Date.now();
 
         const msg = {
-            type: "player_answer",
+            action: "player_answer",
             room: this.roomId,
             answer: answerId,
             answerTime: answerTime,
@@ -114,10 +129,10 @@ export class GameHandler {
     }
 
     handleChooseSabotage(msg) {
-        this.setChooseSabotage({
-            choices: msg.choices[loserIds[0]],
-            choose: this.sendSabotageChoice
-        });
+        const choices = msg.choices[Object.keys(msg.choices)[0]];
+
+        this.setChooseSabotage(choices);
+        setTimeout(() => this.setChooseSabotage?.(null), 3000);
     }
     sendSabotageChoice(sabotageName) {
         const msg = {
@@ -126,16 +141,18 @@ export class GameHandler {
         };
         this.socket.send(JSON.stringify(msg));
     }
-
+    handleWaitForWinner(msg) {
+        this.setWaitWinner(msg.winner);
+    }
     handleSabotageNoti(msg) {
         const { sabotage, usedBy, targets } = msg;
-        const message = "";
+        let message = "";
 
-        const targetNames = targets.map(t => t.name).join(', ');
-        if (usedBy === "system") {
+        const targetNames = Array.isArray(targets) ? targets.map(t => t.name).join(', ') : targets;
+        if (usedBy === "System") {
             message = "All players have been sabotaged";
         } else {
-            message = `${usedBy} used ${sabotage} on ${targetNames}`;
+            message = `Winner used ${sabotage} on ${targetNames}`;
         }
 
         this.setSabotageNoti?.(message);
@@ -145,13 +162,16 @@ export class GameHandler {
     handleRoundResult(msg) {
         const { winner, losers } = msg;
 
-        let message = `Fatest Correct Answer (+1 heart):\n ${winner} `;
+        let message = "";
+        if (!winner) {
+            message = "No correct answers this round.";
+        } else { message = `Fatest Correct Answer: \n ${winner} `; }
 
         if (losers && losers.length > 0) {
             message += `\nIncorrect Answer (-1 heart):\n ${losers.join(', ')}`;
         }
 
-        this.setShowPopup(true);
+        // this.setShowPopup(true);
         this.setRoundResultNoti?.(message);
         setTimeout(() => this.setRoundResultNoti?.(null), 3000);
     }

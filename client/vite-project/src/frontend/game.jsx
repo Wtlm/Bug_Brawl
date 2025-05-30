@@ -6,13 +6,12 @@ import { useLocation } from "react-router-dom";
 import { getSocket } from "../socket/socket.js";
 import { GameHandler } from "../socket/gameHandlers.js";
 import { useNavigate } from 'react-router-dom';
+import { useSocket } from '../socket/socketContext.jsx';
 
 
 
 export default function Game() {
     const location = useLocation();
-
-    console.log("Game component mounted:", location.state?.roomId);
     const [showPopup, setShowPopup] = useState(false);
     const [question, setQuestion] = useState(null);
     const [isScrambled, setIsScrambled] = useState(false);
@@ -32,15 +31,20 @@ export default function Game() {
     const sabotageName = currentEffects.length > 0 ? currentEffects[0] : "";
     const [roundResultNoti, setRoundResultNoti] = useState(null);
     const navigate = useNavigate();
+    const socket = useSocket();
+    const [hasAnswered, setHasAnswered] = useState(false);
+    const [selectedAnswerId, setSelectedAnswerId] = useState(null);
+    const [waitWinner, setWaitWinner] = useState(null);
+
+    console.log("Current Player ID:", currentPlayerId);
+    console.log("Current Effects:", currentEffects);
+    console.log("Sabotage Name:", sabotageName);
+
 
     // const [onGameOver, setOnGameOver] = useState(null);
 
 
     useEffect(() => {
-        console.log("Game component mounted");
-        const socket = getSocket();
-        // console.log("Game component mounted with roomId:", roomId);
-        // console.log("players:", players);
         gameHandler.current = new GameHandler(socket, roomId, {
             setPlayers,
             setQuestion,
@@ -48,10 +52,17 @@ export default function Game() {
             setTimeLeft,
             onTimeExpired: () => {
                 console.log("Time's up!");
+                gameHandler.current.sendAnswer("");
                 setShowPopup(false);
+                setQuestion(null);
+                setCodeRainActive(false);
+                setIsScrambled(false);
+                setScrambledQuestion('');
+                setScrambledOptions([]);
                 // Add logic here to handle time expiry
             },
             setChooseSabotage,
+            setWaitWinner,
             setCodeRainActive,
             setSabotageNoti,
             setPlayerEffects,
@@ -62,13 +73,53 @@ export default function Game() {
             }
         });
 
+
         // Cleanup if needed
         return () => {
             gameHandler.current?.clearTimer?.();
-            socket.close();
+            // socket.close();
         };
     }, [roomId]);
 
+    useEffect(() => {
+        if (currentEffects.includes("CodeRain")) {
+            setCodeRainActive(true);
+        } else {
+            setCodeRainActive(false);
+        }
+
+        const questionTime = currentEffects.includes("BugEat") ? 20 : 5;
+        gameHandler.current.startTimer(questionTime);
+    }, [currentEffects]);
+
+    useEffect(() => {
+        // Hide question popup if any other popup is active
+        if (!!chooseSabotage || !!sabotageNoti || !!roundResultNoti || waitWinner) {
+            setShowPopup(false);
+        }
+    }, [chooseSabotage, sabotageNoti, roundResultNoti, waitWinner]);
+
+    useEffect(() => {
+        // Reset answer state only when a new question arrives
+        if (question) {
+
+            setChooseSabotage(null);
+            setSabotageNoti(null);
+            setRoundResultNoti(null);
+            setWaitWinner(null);
+            setHasAnswered(false);
+            setSelectedAnswerId(null);
+            setShowPopup(true);
+        }
+    }, [question]);
+
+    useEffect(() => {
+        // Reset answer state only when sabotage selection appears
+        if (!!chooseSabotage) {
+            setHasAnswered(false);
+            setSelectedAnswerId(null);
+        }
+    }, [chooseSabotage]);
 
     // useEffect(() => {
     //     const timer = setTimeout(() => {
@@ -110,11 +161,23 @@ export default function Game() {
 
     const handleClosePopup = () => {
         setShowPopup(false);
-        setCodeRainActive(false);
-        setIsScrambled(false);
-        setScrambledQuestion('');
-        setScrambledOptions([]);
     };
+
+    useEffect(() => {
+        if (currentEffects.includes("CodeRain")) {
+            setCodeRainActive(true);
+        } else {
+            setCodeRainActive(false);
+        }
+
+        if (currentEffects.includes("BugEat")) {
+            // trigger BugEat effect here (e.g., set a state or call a function)
+            // Example: bugEatActiveRef.current = true;
+        } else {
+            // reset BugEat effect if needed
+            // Example: bugEatActiveRef.current = false;
+        }
+    }, [currentEffects]);
 
     return (
 
@@ -129,65 +192,83 @@ export default function Game() {
                     borderColor={["blue", "red", "green", "yellow"][idx % 4]}
                 />
             ))}
-            <Popup className="w-3/5 h-5/6" show={showPopup} onClose={handleClosePopup} sabotageName={sabotageName}>
+            <Popup className="w-3/5 h-5/6" show={showPopup} sabotageName={sabotageName}>
                 {question && (
                     <div className={` p-6 text-left  ${isScrambled ? 'text-green-500' : 'text-white'}`}>
                         <h2 className="lg:text-2xl text-sm font-bold mb-5 "> {isScrambled ? scrambledQuestion : question.question}</h2>
                         <ul className=" grid grid-cols-2 grid-rows-2 gap-5">
-                            {(isScrambled ? scrambledOptions : question.options.map(o => o.text)).map((text, idx) => (
-                                <li
-                                    key={question.options[idx].id}
-                                    className={`${isScrambled ? 'bg-black' : 'bg-[#9f9f9f]'} ${isScrambled ? 'text-green-400' : 'text-black'} px-4 py-1 rounded-xl font-medium lg:text-xl text-xs content-center leading-tight`}
-                                    onClick={() => {
-                                        gameHandler.current.sendAnswer(question.options[idx].id);
-                                    }}
-                                >
-                                    {/* <span className="mr-2">{option.id.toUpperCase()}.</span> */}
-                                    {text}
-                                </li>
-                            ))}
+                            {(isScrambled ? scrambledOptions : question.options.map(o => o.text)).map((text, idx) => {
+                                const optionId = question.options[idx].id;
+                                const isSelected = selectedAnswerId === optionId;
+
+                                return (
+                                    <li
+                                        key={optionId}
+                                        className={`${isScrambled ? 'bg-black' : isSelected ? 'bg-white' : 'bg-[#9f9f9f]'} ${isScrambled ? 'text-green-400' : 'text-black'} px-4 py-1 rounded-xl font-medium lg:text-xl text-xs content-center leading-tight
+                                                     ${hasAnswered ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white cursor-pointer'}`}
+                                        onClick={() => {
+                                            if (hasAnswered) return;
+                                            setHasAnswered(true);
+                                            setSelectedAnswerId(optionId);
+                                            gameHandler.current.sendAnswer(optionId);
+                                        }}
+                                    >
+                                        {/* <span className="mr-2">{optionId.toUpperCase()}.</span> */}
+                                        {text}
+                                    </li>
+                                );
+                            })}
+
                         </ul>
                     </div>
                 )}
             </Popup>
             <Popup
                 className="w-3/5 h-5/6"
-                show={!!chooseSabotage}
+                show={!!chooseSabotage || !!sabotageNoti || !!roundResultNoti || !!waitWinner}
                 sabotageName=""
             >
-                {sabotageNoti && (
-                    <div className=" p-6 text-center text-white lg:text-2xl text-sm font-bold mb-5">
+                {sabotageNoti ? (
+                    <div className="p-6 text-center text-white lg:text-2xl text-sm font-bold mb-5">
                         {sabotageNoti}
                     </div>
-                )}
-                {roundResultNoti && (
-                    <div className=" p-6 text-center text-white lg:text-2xl text-sm font-bold mb-5">
+                ) : roundResultNoti ? (
+                    <div className="p-6 text-center text-white lg:text-2xl text-sm font-bold mb-5">
                         {roundResultNoti}
                     </div>
-                )}
-                {chooseSabotage && (
+                ) : waitWinner ? (
+                    <div className="p-6 text-center text-white lg:text-2xl text-sm font-bold mb-5">
+                        Waiting for {waitWinner} to choose a sabotage...
+                    </div>
+                ) : chooseSabotage ? (
                     <div className="p-6 text-center text-white">
-                        <h2 className="lg:text-2xl text-sm font-bold mb-5">
-                            Choose a sabotage
-                        </h2>
+                        <h2 className="lg:text-2xl text-sm font-bold mb-5">Choose a sabotage</h2>
 
                         <ul className="grid grid-cols-2 grid-rows-2 gap-5">
-                            {chooseSabotage.choices.map(choice => (
-                                <li
-                                    key={choice}
-                                    className="bg-[#9f9f9f] text-black px-4 py-1 rounded-xl font-medium lg:text-xl text-xs content-center leading-tight cursor-pointer"
-                                    onClick={() => {
-                                        chooseSabotage.choose(choice);
-                                        setChooseSabotage(null);
-                                    }}
-                                >
-                                    {choice}
-                                </li>
-                            ))}
+                            {chooseSabotage.map(choice => {
+                                const isSelected = selectedAnswerId === choice;
+                                return (
+                                    <li
+                                        key={choice}
+                                        className={`${isSelected ? 'bg-white' : 'bg-[#9f9f9f]'} text-black px-4 py-1 rounded-xl font-medium lg:text-xl text-xs content-center leading-tight cursor-pointer 
+                                                    ${hasAnswered ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white cursor-pointer'}`}
+                                        onClick={() => {
+                                            if (hasAnswered) return;
+                                            setHasAnswered(true);
+                                            setSelectedAnswerId(choice);
+                                            gameHandler.current.sendSabotageChoice(choice);
+
+                                        }}
+                                    >
+                                        {choice}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
-                )}
+                ) : null}
             </Popup>
+
 
         </div>
     );

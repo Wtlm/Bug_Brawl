@@ -5,7 +5,6 @@ import bug2Gif from "../assets/image/bug2.gif";
 import Bulb from "../assets/image/bulb.png";
 
 function Popup({ show, onClose, children, className = "", sabotageName = "" }) {
-  console.log("Popup rendered with sabotageName:", sabotageName);
   const width = window.innerWidth;
   const height = window.innerHeight;
   const popupRef = useRef(null);

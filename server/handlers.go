@@ -20,8 +20,9 @@ func handleCreateRoom(client *Client, conn *websocket.Conn) {
 		roomCode = generateRoomCode()
 	}
 
-	// client.roomCode = roomCode
-	client.isHost = true
+	// client.RoomCode = roomCode
+	client.IsHost = true
+	client.Health = 5 // Reset health for new room
 	// clientsPerRoom[roomCode] = []*Client{client}
 	newRoom := &Room{
 		Players:           []*Client{client},
@@ -30,29 +31,29 @@ func handleCreateRoom(client *Client, conn *websocket.Conn) {
 		SabotageSelection: nil,
 		AnswerLog:         []*PlayerAnswer{},
 		AvailableSabotages: map[string][]*Sabotage{
-			client.id: GenerateInitialSabotageList(),
+			client.ID: GenerateInitialSabotageList(),
 		},
 		PlayerEffects: map[string][]*Sabotage{
-			client.id: {},
+			client.ID: {},
 		},
 	}
 	// for _, c := range newRoom.Players{
 	// 	newRoom.Players,
-	// 	newRoom.AvailableSabotages[c.id] = GenerateInitialSabotageList(),
-	// 	newRoom.PlayerEffects[c.id] = []*Sabotage{}
+	// 	newRoom.AvailableSabotages[c.ID] = GenerateInitialSabotageList(),
+	// 	newRoom.PlayerEffects[c.ID] = []*Sabotage{}
 	// }
 
 	roomsMutex.Lock()
 	rooms[roomCode] = newRoom
 	roomsMutex.Unlock()
 
-	log.Printf("Room %s created by %s (%s)\n", roomCode, client.name, client.id)
+	log.Printf("Room %s created by %s (%s)\n", roomCode, client.Name, client.ID)
 
 	err := conn.WriteJSON(map[string]interface{}{
 		"type":     "room_created",
 		"roomCode": roomCode,
-		"id":       client.id,
-		"name":     client.name,
+		"id":       client.ID,
+		"name":     client.Name,
 	})
 	if err != nil {
 		log.Printf("Error sending room_created message: %v\n", err)
@@ -79,10 +80,11 @@ func handleJoinRoom(client *Client, conn *websocket.Conn, msg Message) {
 		return
 	}
 
-	// client.roomCode = msg.Room
-	client.isHost = false
+	// client.RoomCode = msg.Room
+	client.IsHost = false
+	client.Health = 5 // Reset health when joining a room
 	room.Players = append(room.Players, client)
-	room.PlayerEffects[client.id] = GenerateInitialSabotageList()
+	room.PlayerEffects[client.ID] = GenerateInitialSabotageList()
 
 	// roomsMutex.RLock()
 	// room := rooms[msg.Room]
@@ -92,7 +94,7 @@ func handleJoinRoom(client *Client, conn *websocket.Conn, msg Message) {
 		"type": "joined",
 	})
 
-	log.Printf("%s (%s) joined room %s\n", client.name, client.id, msg.Room)
+	log.Printf("%s (%s) joined room %s\n", client.Name, client.ID, msg.Room)
 	broadcastPlayerCount(room)
 }
 
@@ -105,7 +107,8 @@ func handleFindMatch(client *Client, conn *websocket.Conn) {
 	if err != nil {
 		log.Printf("Error sending searching message: %v\n", err)
 	}
-	client.isHost = false
+	client.IsHost = false
+	client.Health = 5 // Reset health when searching for a match
 	addToMatchQueue(client)
 }
 
@@ -114,20 +117,20 @@ func handleStartGame(client *Client, conn *websocket.Conn) {
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
 
-	room := client.room
+	room := client.Room
 	if room == nil {
 		conn.WriteJSON(map[string]string{"error": "Not in any room"})
 		return
 	}
 
-	// roomClients, exists := clientsPerRoom[client.roomCode]
+	// roomClients, exists := clientsPerRoom[client.RoomCode]
 	// if !exists {
 	// 	conn.WriteJSON(map[string]string{"error": "Room does not exist"})
 	// 	clientsMutex.Unlock()
 	// 	return
 	// }
 
-	if !client.isHost {
+	if !client.IsHost {
 		conn.WriteJSON(map[string]string{"error": "Only the host can start the game"})
 		clientsMutex.Unlock()
 		return
@@ -140,31 +143,31 @@ func handleStartGame(client *Client, conn *websocket.Conn) {
 	}
 
 	startGame(room)
-	log.Printf("Host %s started the game in room %s\n", client.name, room.RoomCode)
+	log.Printf("Host %s started the game in room %s\n", client.Name, room.RoomCode)
 }
 
 func handleCancelFindMatch(client *Client, conn *websocket.Conn) {
 	removePlayerFromQueue(client)
 
-	client.room = nil
-	client.isHost = false
+	client.Room = nil
+	client.IsHost = false
 	err := conn.WriteJSON(map[string]string{
 		"type": "cancelled",
 	})
 	if err != nil {
 		log.Printf("Error sending cancelled message: %v\n", err)
 	}
-	log.Printf("Cancelled find match for %s\n", client.name)
+	log.Printf("Cancelled find match for %s\n", client.Name)
 	conn.WriteJSON(map[string]string{"type": "find_match_cancelled"})
 }
 
 func handleLeaveRoom(client *Client, conn *websocket.Conn) {
-	if client.room != nil {
+	if client.Room != nil {
 		removeClientFromRoom(client)
-		client.isHost = false
-		client.room = nil
+		client.IsHost = false
+		client.Room = nil
 		conn.WriteJSON(map[string]string{"type": "left_room"})
-		log.Printf("%s left the room\n", client.name)
+		log.Printf("%s left the room\n", client.Name)
 	}
 }
 
@@ -176,35 +179,23 @@ func handleAnswer(client *Client, msg Message, conn *websocket.Conn) {
 		return
 	}
 
-	roomsMutex.RLock()
-	room := client.room
-	roomsMutex.RUnlock()
+	// roomsMutex.RLock()
+	room := rooms[msg.Room]
+	// roomsMutex.RUnlock()
 
 	if room == nil {
 		conn.WriteJSON(map[string]string{"error": "Room not found"})
 		return
 	}
 
-	room.RoundMutex.Lock()
-	defer room.RoundMutex.Unlock()
-
-	now := time.Now().UnixNano() / int64(time.Millisecond)
-	if now-room.QuestionStart > 30000 { // 30 seconds timeout
-		conn.WriteJSON(map[string]string{"error": "Answer time expired"})
-		return
-	}
-
-	// Check if client already answered
-	for _, ans := range room.AnswerLog {
-		if ans.Client == client {
-			conn.WriteJSON(map[string]string{"error": "Already answered"})
-			return
-		}
-	}
-
 	// Check correctness
 	correct := false
 	currentQuestion := room.Question
+	log.Printf("Current question: %+v", room.Question)
+
+	log.Printf("Player %s answered: %s", client.Name, msg.Answer)
+	log.Printf("Current question answer: %s", currentQuestion.Answer)
+
 	if msg.Answer == currentQuestion.Answer {
 		correct = true
 	}
@@ -215,43 +206,84 @@ func handleAnswer(client *Client, msg Message, conn *websocket.Conn) {
 		AnswerTime: msg.AnswerTime,
 		Correct:    correct,
 	})
-	if len(room.AnswerLog) == len(room.Players) {
-		result := room.EvaluateRoundResults()
-		room.CalculateHealth(result.Winner, result.Losers)
 
-		// Broadcast round result
-		loserNames := []string{}
-		for _, l := range result.Losers {
-			if l.Client != nil {
-				loserNames = append(loserNames, l.Client.name)
+	log.Printf("Player %s answered: %s (correct: %t)", client.Name, msg.Answer, correct)
+	answerTimeoutMs := int64(5000) // 30 seconds
+	now := time.Now().UnixMilli()
+
+	if now-room.QuestionStart > answerTimeoutMs || len(room.AnswerLog) == len(room.Players) {
+
+		for _, player := range room.Players {
+			found := false
+			for _, ans := range room.AnswerLog {
+				if ans.Client == player {
+					found = true
+					break
+				}
+			}
+			if !found {
+				room.AnswerLog = append(room.AnswerLog, &PlayerAnswer{
+					Client:     player,
+					Answer:     "",
+					Correct:    false,
+					AnswerTime: 1<<63 - 1, // Max int64, so always slowest
+				})
 			}
 		}
+		if len(room.AnswerLog) == len(room.Players) {
+			result := room.EvaluateRoundResults()
+			if result.Winner == nil || result.Winner.Client == nil {
+				log.Printf("No winner found in this round")
+			}
+			log.Printf("Losers: %+v", result.Losers)
+			room.CalculateHealth(result.Winner, result.Losers)
 
-		for _, p := range room.Players {
-			p.conn.WriteJSON(map[string]interface{}{
-				"type":   "round_result",
-				"winner": result.Winner.Client.name,
-				"losers": loserNames,
-			})
+			loserNames := []string{}
+			for _, l := range result.Losers {
+				if l != nil && l.Client != nil {
+					loserNames = append(loserNames, l.Client.Name)
+				}
+			}
+			winnerName := ""
+			if result.Winner != nil && result.Winner.Client != nil {
+				winnerName = result.Winner.Client.Name
+			}
+
+			for _, p := range room.Players {
+				// p.connMutex.Lock()
+				err := p.Conn.WriteJSON(map[string]interface{}{
+					"type":   "round_result",
+					"winner": winnerName,
+					"losers": loserNames,
+				})
+				// p.connMutex.Unlock()
+				if err != nil {
+					log.Printf("Error sending round_result to %s: %v", p.ID, err)
+				}
+
+			}
+			go func() {
+				time.Sleep(3 * time.Second)
+				room.AssignSabotagesToLosers(result)
+			}()
 		}
 
-		room.AssignSabotagesToLosers(result)
+		// }
 	}
-
 }
 
 func handleUseSabotage(winner *Client, msg Message, conn *websocket.Conn) {
-	room := winner.room
+	room := winner.Room
 	if room == nil {
 		conn.WriteJSON(map[string]string{"error": "Room not found"})
 		return
 	}
 
-	room.RoundMutex.Lock()
-	defer room.RoundMutex.Unlock()
+	// room.RoundMutex.Lock()
+	// defer room.RoundMutex.Unlock()
 
 	// Verify sabotage selection is in progress
-	if room.SabotageSelection == nil || room.SabotageSelection.WinnerID != winner.id {
+	if room.SabotageSelection == nil || room.SabotageSelection.WinnerID != winner.ID {
 		conn.WriteJSON(map[string]string{"error": "Not allowed to use sabotage"})
 		return
 	}
@@ -263,8 +295,8 @@ func handleUseSabotage(winner *Client, msg Message, conn *websocket.Conn) {
 	for playerID := range room.SabotageSelection.Choices {
 		targetName := "Unknown"
 		for _, client := range room.Players {
-			if client.id == playerID {
-				targetName = client.name
+			if client.ID == playerID {
+				targetName = client.Name
 				break
 			}
 		}
@@ -279,7 +311,7 @@ func handleUseSabotage(winner *Client, msg Message, conn *websocket.Conn) {
 			Name:     sabotageName,
 			Used:     true,
 			TargetID: playerID,
-			UsedByID: winner.id,
+			UsedByID: winner.ID,
 		}
 
 		room.PlayerEffects[playerID] = append(room.PlayerEffects[playerID], s)
@@ -290,19 +322,24 @@ func handleUseSabotage(winner *Client, msg Message, conn *websocket.Conn) {
 				break
 			}
 		}
-
-		log.Printf("Applied sabotage %s from %s to %s", sabotageName, winner.id, playerID)
+		log.Printf("HANDLE player effect: %+v", room.PlayerEffects[playerID])
+		log.Printf("available sabotages: %+v", room.AvailableSabotages[playerID])
+		log.Printf("Applied sabotage %s from %s to %s", sabotageName, winner.ID, playerID)
 	}
 
 	// Notify all players in the room
 	for _, c := range room.Players {
-		c.conn.WriteJSON(map[string]interface{}{
+
+		c.Conn.WriteJSON(map[string]interface{}{
 			"type":     "sabotage_applied",
 			"sabotage": sabotageName,
-			"usedBy":   winner.name,
+			"usedBy":   winner.Name,
 			"targets":  targetInfos,
 		})
 	}
 
-	room.StartQuestion()
+	go func() {
+		time.Sleep(3 * time.Second)
+		room.StartQuestion()
+	}()
 }

@@ -4,6 +4,7 @@ import { delay, motion } from "framer-motion";
 import { getSocket } from "../socket/socket.js";
 import Popup from "../widget/popup";
 import { LobbyHandlers } from '../socket/lobbyHandlers.js';
+import { useSocket } from '../socket/socketContext.jsx';
 
 function Lobby() {
       console.log("Lobby component mounted");
@@ -22,7 +23,7 @@ function Lobby() {
   const [status, setStatus] = useState("");
   const [isFindingMatch, setIsFindingMatch] = useState(false);
   const [countdown, setCountdown] = useState(null);
-  const socketRef = useRef(null);
+  const socketRef = useSocket();
   const navigate = useNavigate();
   const handlers = new LobbyHandlers(
     // States

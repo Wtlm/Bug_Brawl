@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 type Message struct {
@@ -22,19 +23,20 @@ type Option struct {
 }
 
 type Question struct {
-	ID      int   `json:"id"`
-	Text    string   `json:"text"`
+	ID      int      `json:"id"`
+	Text    string   `json:"question"`
 	Options []Option `json:"options"`
-	Answer  string   `json:"answer"`
+	Answer  string   `json:"correctAnswer"`
 }
 
 type Client struct {
-	id     string
-	conn   *websocket.Conn
-	name   string
-	room   *Room
-	isHost bool
-	Health int 
+	ID        string
+	Conn      *websocket.Conn
+	ConnMutex sync.Mutex // Prevent concurrent writes
+	Name      string
+	Room      *Room
+	IsHost    bool
+	Health    int
 }
 
 type PlayerAnswer struct {
@@ -81,10 +83,10 @@ type SabotageSelection struct {
 
 var (
 	// clientsPerRoom = make(map[string][]*Client)
-	clientsMutex   sync.Mutex
-	matchQueue     []*Client
-	queueMutex     sync.Mutex
-	upgrader       = websocket.Upgrader{
+	clientsMutex sync.Mutex
+	matchQueue   []*Client
+	queueMutex   sync.Mutex
+	upgrader     = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 	rooms         = make(map[string]*Room)
@@ -143,7 +145,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	log.Println("WebSocket connection established")
 
-	client := &Client{conn: conn, id: generateClientID()}
+	client := &Client{Conn: conn, ID: generateClientID()}
 
 	for {
 		_, msgBytes, err := conn.ReadMessage()
@@ -163,7 +165,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("Parsed message: %+v", msg)
 		if msg.Name != "" {
-			client.name = msg.Name
+			client.Name = msg.Name
 		}
 
 		clientsMutex.Lock()
@@ -210,13 +212,13 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	for i, queuedClient := range matchQueue {
 		if queuedClient == client {
 			matchQueue = append(matchQueue[:i], matchQueue[i+1:]...)
-			log.Printf("Removed %s (%s) from match queue\n", client.name, client.id)
+			log.Printf("Removed %s (%s) from match queue\n", client.Name, client.ID)
 			break
 		}
 	}
 	queueMutex.Unlock()
 
-	if client.room.RoomCode != "" {
+	if client.Room.RoomCode != "" {
 		removeClientFromRoom(client)
 	}
 }
