@@ -245,13 +245,13 @@ function Lobby() {
           </div>
         )}
 
-        {countdown !== null && (
+        {/* {countdown !== null && (
           <div className="text-center mt-4">
             <p className="text-xl font-bold text-green-500">
               Starting in {countdown}...
             </p>
           </div>
-        )}
+        )} */}
       </Popup>
     </div>
   );
